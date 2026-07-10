@@ -31,8 +31,8 @@ class CaptionGenerator:
                 return "Failed to process video via Gemini API."
 
             prompt = (
-                "Watch this video clip carefully. Provide one detailed, factual scene description "
-                "(a few sentences) capturing the actual content: the subject's actions, facial expressions, "
+                "Watch this ENTIRE video clip carefully from start to finish. Provide one detailed, factual scene description "
+                "(a few sentences) capturing the actual content of the whole video: the subject's actions, facial expressions, "
                 "gestures, the setting, background details, the pacing, and explicitly transcribe or summarize "
                 "any speech/audio content. Do not add any stylistic commentary or opinions."
             )

@@ -1,8 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Terminal, Cpu, CheckCircle2, XCircle } from 'lucide-react';
+import { Terminal, Cpu, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import axios from 'axios';
-
-/* ── All data-fetching, state, and props unchanged ── */
+import ParticleOrb from './ParticleOrb';
 
 interface MonitorProps {
   videoId: string;
@@ -10,19 +9,18 @@ interface MonitorProps {
 }
 
 const STAGES = [
-  { id: 'preprocessor', name: 'Extract',   desc: 'Media validation & keyframe sampling' },
-  { id: 'sampling',     name: 'Sample',    desc: 'Motion-aware visual extraction' },
-  { id: 'reasoning',    name: 'Reason',    desc: 'Scene graph & semantic tagging' },
-  { id: 'generating',   name: 'Style',     desc: 'Multi-head style transformers' },
+  { id: 'uploading',  name: 'Upload',  desc: 'Transferring to Gemini AI' },
+  { id: 'analyzing',  name: 'Analyze', desc: 'Watching entire video' },
+  { id: 'generating', name: 'Style',   desc: 'Multi-head style transformers' },
+  { id: 'completed',  name: 'Done',    desc: 'Pipeline successful' },
 ];
 
 const STATUS_LABEL: Record<string, string> = {
   queued:       'Queued — waiting for worker slot',
-  preprocessor: 'Extracting — validating media container and tracks',
-  sampling:     'Sampling — detecting motion-aware keyframes',
-  reasoning:    'Reasoning — building visual scene graph',
-  generating:   'Styling — running parallel style transformers',
-  completed:    'Complete — all captions generated',
+  uploading:    'Uploading — transferring video context to Gemini AI',
+  analyzing:    'Analyzing — watching entire video and extracting facts',
+  generating:   'Styling — running parallel style transformers (Fireworks)',
+  completed:    'Complete — all captions generated successfully',
   failed:       'Failed — check execution log for details',
 };
 
@@ -72,6 +70,7 @@ export default function Monitor({ videoId, onProcessingComplete }: MonitorProps)
   const activeIndex = STAGES.findIndex(s => s.id === status);
   const isRunning   = status !== 'completed' && status !== 'failed';
   const isFailed    = status === 'failed';
+  const isCompleted = status === 'completed';
 
   return (
     <div className="w-full space-y-5 animate-fade-in">
@@ -111,15 +110,15 @@ export default function Monitor({ videoId, onProcessingComplete }: MonitorProps)
 
           <div className="relative grid grid-cols-4 gap-2">
             {STAGES.map((stage, idx) => {
-              const isCompleted = idx < activeIndex || status === 'completed';
-              const isActive    = idx === activeIndex && isRunning;
-              const isStageFail = isFailed && idx === activeIndex;
+              const stageIsCompleted = idx < activeIndex || status === 'completed';
+              const isActive         = idx === activeIndex && isRunning;
+              const isStageFail      = isFailed && idx === activeIndex;
 
               return (
                 <div key={stage.id} className="flex flex-col items-center gap-2.5 text-center">
 
                   {/* Connector fill — gradient fill! */}
-                  {idx > 0 && isCompleted && (
+                  {idx > 0 && stageIsCompleted && (
                     <div
                       className="absolute h-px bg-gradient-to-r from-ai-indigo to-ai-cyan connector-fill"
                       style={{
@@ -134,7 +133,7 @@ export default function Monitor({ videoId, onProcessingComplete }: MonitorProps)
                   <div className={[
                     'relative z-10 h-9 w-9 rounded-full flex items-center justify-center',
                     'border-2 text-xs font-bold transition-all duration-300',
-                    isCompleted
+                    stageIsCompleted
                       ? 'bg-ai-indigo border-ai-indigo text-white shadow-[0_0_14px_rgba(99,102,241,0.5)]'
                       : isActive
                       ? 'bg-obsidian border-ai-cyan text-ai-cyan shadow-[0_0_14px_rgba(34,211,238,0.35)] animate-pulse'
@@ -142,17 +141,17 @@ export default function Monitor({ videoId, onProcessingComplete }: MonitorProps)
                       ? 'bg-rose-950 border-rose-600 text-rose-400'
                       : 'bg-obsidian border-zinc-800 text-zinc-500',
                   ].join(' ')}>
-                    {isCompleted  ? <CheckCircle2 className="h-4 w-4 check-in" /> :
-                     isStageFail  ? <XCircle className="h-4 w-4" /> :
+                    {stageIsCompleted  ? <CheckCircle2 className="h-4 w-4 check-in" /> :
+                     isStageFail       ? <XCircle className="h-4 w-4" /> :
                      idx + 1}
                   </div>
 
                   {/* Label */}
                   <div>
                     <p className={`text-[11px] font-bold font-display uppercase tracking-widest transition-colors duration-300 ${
-                      isActive    ? 'text-ai-cyan' :
-                      isCompleted ? 'text-white' :
-                      isStageFail ? 'text-rose-400' :
+                      isActive         ? 'text-ai-cyan' :
+                      stageIsCompleted ? 'text-white' :
+                      isStageFail      ? 'text-rose-400' :
                       'text-zinc-500'
                     }`}>{stage.name}</p>
                     <p className="text-[10px] text-zinc-500 mt-0.5 leading-tight hidden sm:block">{stage.desc}</p>
@@ -164,48 +163,80 @@ export default function Monitor({ videoId, onProcessingComplete }: MonitorProps)
         </div>
       </div>
 
-      {/* ── Terminal Log ── */}
-      <div className="bg-obsidian rounded-2xl border border-zinc-800 flex flex-col h-[300px] overflow-hidden shadow-2xl shadow-black/50">
-        {/* Chrome bar */}
-        <div className="flex items-center gap-2 px-5 py-2.5 border-b border-zinc-800 bg-zinc-900/80 shrink-0">
-          <div className="flex gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-full bg-rose-500/50" />
-            <span className="h-2.5 w-2.5 rounded-full bg-yellow-500/50" />
-            <span className="h-2.5 w-2.5 rounded-full bg-ai-emerald/50" />
-          </div>
-          <div className="flex items-center gap-2 ml-3 text-zinc-500 text-xs font-mono">
-            <Terminal className="h-3 w-3 text-ai-cyan" />
-            <span>captionforge — execution log &nbsp;·&nbsp; {videoId}</span>
-          </div>
-          {isRunning && (
-            <span className="ml-auto flex items-center gap-1.5 text-[10px] font-mono text-ai-cyan">
-              <span className="h-1.5 w-1.5 rounded-full bg-ai-cyan animate-pulse" />
-              LIVE
+      {/* ── Visual Processing Display & Terminal Log ── */}
+      <div className="bg-[#050505] rounded-2xl border border-zinc-800 flex h-[350px] overflow-hidden shadow-2xl shadow-black/50">
+        
+        {/* Left Side: Dynamic Visualization */}
+        <div className="w-[40%] min-w-[280px] border-r border-zinc-800/80 bg-gradient-to-b from-zinc-900/40 to-transparent flex flex-col items-center justify-center p-6 relative">
+          
+          <div className="absolute top-5 left-5 flex items-center gap-2.5">
+            <span className={`h-2.5 w-2.5 rounded-full ${isRunning ? 'bg-ai-cyan animate-pulse' : isCompleted ? 'bg-ai-emerald' : 'bg-rose-500'}`} />
+            <span className="text-[10px] font-mono text-zinc-400 font-bold uppercase tracking-widest">
+              {isRunning ? 'Synthesizing...' : isCompleted ? 'System Idle' : 'Error'}
             </span>
-          )}
+          </div>
+          
+          <div className="h-44 w-44 relative mt-4">
+            <ParticleOrb 
+              hue={isRunning ? 200 : isCompleted ? 140 : 0} 
+              hoverIntensity={0.5} 
+              rotateOnHover={true} 
+              forceHoverState={isRunning} 
+              backgroundColor="transparent"
+            />
+            {isRunning && (
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <Loader2 className="h-8 w-8 text-ai-cyan/50 animate-spin" />
+              </div>
+            )}
+          </div>
+          
+          <p className="mt-8 text-center text-xs font-medium text-zinc-400 max-w-[200px] leading-relaxed">
+            {STATUS_LABEL[status] ?? 'Processing request...'}
+          </p>
         </div>
 
-        {/* Log stream */}
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-0.5 font-mono text-xs leading-5">
-          {logs.length === 0 && (
-            <span className="text-zinc-600 italic">Initializing console stream…</span>
-          )}
-          {logs.map((log, i) => {
-            const isError = log.includes('[ERROR]') || log.includes('CRITICAL');
-            const isDone  = log.includes('finished') || log.includes('complete');
-            const isInfo  = log.startsWith('[INFO]');
-            const isWarn  = log.startsWith('[WARN]');
-            return (
-              <div key={i} className={
-                isError ? 'text-rose-400' :
-                isDone  ? 'text-white font-semibold' :   
-                isWarn  ? 'text-yellow-400' :
-                isInfo  ? 'text-ai-cyan' :   
-                'text-zinc-400'
-              }>{log}</div>
-            );
-          })}
-          <div ref={terminalEndRef} />
+        {/* Right Side: Execution Stream */}
+        <div className="flex-1 flex flex-col h-full bg-[#0a0a0c]">
+          <div className="flex items-center gap-2 px-5 py-3 border-b border-zinc-800/80 bg-zinc-900/50 shrink-0">
+            <div className="flex gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-rose-500/30" />
+              <span className="h-2.5 w-2.5 rounded-full bg-yellow-500/30" />
+              <span className="h-2.5 w-2.5 rounded-full bg-ai-emerald/30" />
+            </div>
+            <div className="flex items-center gap-2 ml-3 text-zinc-500 text-xs font-mono">
+              <Terminal className="h-3.5 w-3.5 text-ai-indigo" />
+              <span>execution_log.sh &nbsp;·&nbsp; {videoId.substring(0,8)}</span>
+            </div>
+            {isRunning && (
+              <span className="ml-auto flex items-center gap-1.5 text-[10px] font-mono text-ai-indigo">
+                <span className="h-1.5 w-1.5 rounded-full bg-ai-indigo animate-pulse" />
+                LIVE
+              </span>
+            )}
+          </div>
+
+          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-1 font-mono text-[11.5px] leading-relaxed">
+            {logs.length === 0 && (
+              <span className="text-zinc-600 italic">Initializing compute stream...</span>
+            )}
+            {logs.map((log, i) => {
+              const isError = log.includes('[ERROR]') || log.includes('CRITICAL');
+              const isDone  = log.includes('finished') || log.includes('complete');
+              const isInfo  = log.startsWith('[INFO]');
+              const isWarn  = log.startsWith('[WARN]');
+              return (
+                <div key={i} className={
+                  isError ? 'text-rose-400 font-medium' :
+                  isDone  ? 'text-white font-semibold' :   
+                  isWarn  ? 'text-yellow-400' :
+                  isInfo  ? 'text-ai-cyan/90' :   
+                  'text-zinc-400'
+                }>{log}</div>
+              );
+            })}
+            <div ref={terminalEndRef} />
+          </div>
         </div>
       </div>
 

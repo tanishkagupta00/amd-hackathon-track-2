@@ -1,11 +1,6 @@
 import os
 import logging
 from typing import Dict, Any, List
-from .video_preprocessor import VideoPreprocessor
-from .frame_sampler import FrameSampler
-from .scene_detector import SceneDetector
-from .vision_engine import VisionEngine
-from .temporal_reasoner import TemporalReasoner
 from .caption_generator import CaptionGenerator
 from .style_transformer import StyleTransformer
 from .caption_critic import CaptionCritic
@@ -14,11 +9,6 @@ logger = logging.getLogger("captionforge.pipeline")
 
 class CaptionForgePipeline:
     def __init__(self):
-        self.preprocessor = VideoPreprocessor()
-        self.sampler = FrameSampler()
-        self.scene_detector = SceneDetector()
-        self.vision_engine = VisionEngine()
-        self.temporal_reasoner = TemporalReasoner()
         self.caption_generator = CaptionGenerator()
         self.style_transformer = StyleTransformer()
         self.critic = CaptionCritic()
@@ -33,30 +23,11 @@ class CaptionForgePipeline:
             if progress_callback:
                 progress_callback(stage, msg)
 
-        update_progress("preprocessor", "Validating video file and extracting metadata...")
-        metadata = self.preprocessor.validate_and_extract(video_path)
+        update_progress("uploading", "Uploading video to Gemini for multimodal analysis...")
+        update_progress("analyzing", "Watching the entire video to extract subjects, actions, and audio...")
         
-        update_progress("sampling", f"Decoding video and running motion-aware keyframe extraction...")
-        keyframes = self.sampler.sample_keyframes(video_path)
-        update_progress("sampling", f"Extracted {len(keyframes)} informative keyframes.")
-
-        update_progress("sampling", "Running scene segmentation...")
-        scenes = self.scene_detector.detect_scenes(keyframes)
-        update_progress("sampling", f"Grouped keyframes into {len(scenes)} scenes.")
-
-        update_progress("reasoning", "Performing spatial object & action tagging per scene...")
-        scene_analyses = []
-        for scene in scenes:
-            analysis = self.vision_engine.analyze_scene(scene, metadata["filename"])
-            scene_analyses.append(analysis)
-            update_progress("reasoning", f"Analyzed Scene {scene['scene_id']}: detected {len(analysis['objects'])} entities.")
-
-        update_progress("reasoning", "Synthesizing temporal timeline & action graph...")
-        temporal_graph = self.temporal_reasoner.build_timeline(scene_analyses)
-
-        update_progress("generating", "Uploading video to Gemini and generating factual base caption summary...")
         base_caption = self.caption_generator.generate_base_caption(video_path)
-        update_progress("generating", f"Base caption generated: '{base_caption}'")
+        update_progress("analyzing", f"Base caption generated: '{base_caption}'")
 
         update_progress("generating", "Running parallel multi-head style transformer & critic feedback loop...")
         styles = ["formal", "sarcastic", "humorous-tech", "humorous-non-tech"]
@@ -67,7 +38,7 @@ class CaptionForgePipeline:
             # Transform
             styled_text = self.style_transformer.transform(base_caption, style)
             # Critic
-            eval_result = self.critic.evaluate_caption(styled_text, style, temporal_graph["entities"])
+            eval_result = self.critic.evaluate_caption(styled_text, style, [])
             
             captions[style] = eval_result["caption"]
             evaluations[style] = {
@@ -81,10 +52,12 @@ class CaptionForgePipeline:
 
         update_progress("completed", "Pipeline run finished successfully.")
 
+        # Return a simplified dictionary, maintaining frontend compatibility
         return {
-            "metadata": metadata,
-            "temporal_graph": temporal_graph,
+            "metadata": {"filename": os.path.basename(video_path)},
+            "temporal_graph": {"entities": []},
             "base_caption": base_caption,
             "captions": captions,
             "evaluations": evaluations
         }
+
