@@ -1,17 +1,7 @@
 {
-  "cleanUrls": true,
+  "buildCommand": "cd frontend && npm install && npm run build",
+  "outputDirectory": "frontend/dist",
   "rewrites": [
-    {
-      "source": "/api/:path*",
-      "destination": "/api/index.py"
-    },
-    {
-      "source": "/assets/:path*",
-      "destination": "/frontend/dist/assets/:path*"
-    },
-    {
-      "source": "/((?!assets/|favicon.ico).*|app)",
-      "destination": "/frontend/dist/index.html"
-    }
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
