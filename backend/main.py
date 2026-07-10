@@ -30,7 +30,8 @@ from fastapi.responses import HTMLResponse
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
 # Serve frontend build folder if it exists
-frontend_dist_path = os.path.join(os.path.dirname(__file__), "../frontend/dist")
+frontend_dist_path = os.path.normpath(os.path.join(os.path.dirname(__file__), "../frontend/dist"))
+print(f"DEBUG CAPTIONFORGE: frontend_dist_path={frontend_dist_path}, exists={os.path.exists(frontend_dist_path)}")
 
 if os.path.exists(frontend_dist_path):
     app.mount("/", StaticFiles(directory=frontend_dist_path, html=True), name="frontend")
