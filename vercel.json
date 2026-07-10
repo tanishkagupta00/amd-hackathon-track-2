@@ -1,8 +1,13 @@
 {
+  "version": 2,
   "builds": [
     {
       "src": "backend/main.py",
       "use": "@vercel/python"
+    },
+    {
+      "src": "frontend/dist/**",
+      "use": "@vercel/static"
     }
   ],
   "rewrites": [
@@ -11,8 +16,12 @@
       "destination": "/backend/main.py"
     },
     {
+      "source": "/assets/:path*",
+      "destination": "/frontend/dist/assets/:path*"
+    },
+    {
       "source": "/((?!assets/|favicon.ico).*|app)",
-      "destination": "/index.html"
+      "destination": "/frontend/dist/index.html"
     }
   ]
 }
