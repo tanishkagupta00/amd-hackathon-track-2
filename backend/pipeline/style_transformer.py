@@ -21,9 +21,9 @@ class StyleTransformer:
             
         prompt = self._get_prompt(base_caption, style)
         try:
-            # Using deepseek-v4-pro since Qwen 3.7 is not in the models list
+            # Using glm-5p1 as specified in the hackathon integration guide
             response = self.client.chat.completions.create(
-                model="accounts/fireworks/models/deepseek-v4-pro",
+                model="accounts/fireworks/models/glm-5p1",
                 messages=[
                     {"role": "user", "content": prompt}
                 ],
