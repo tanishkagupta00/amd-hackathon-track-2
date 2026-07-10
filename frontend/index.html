@@ -2,15 +2,30 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎥</text></svg>" />
+
+    <!-- Favicon: Indigo->Cyan gradient rounded rect with white play triangle -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0%25' stop-color='%236366f1'/><stop offset='100%25' stop-color='%2322d3ee'/></linearGradient></defs><rect width='32' height='32' rx='8' fill='url(%23g)'/><polygon points='12,9 12,23 24,16' fill='white'/></svg>" />
+
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>CaptionForge AI - Premium Video Captioning</title>
-    <!-- Google Fonts Integration -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Fira+Code&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Primary meta -->
+    <title>CaptionForge AI — AI Video Captioning · AMD Hackathon Track 2</title>
+    <meta name="description" content="AI-powered video captioning platform. Upload any video, get captions in Formal, Sarcastic, Humorous-Tech, and Humorous-Non-Tech styles via a multi-stage Extract-Reason-Style pipeline." />
+
+    <!-- OG / Social -->
+    <meta property="og:type"        content="website" />
+    <meta property="og:title"       content="CaptionForge AI — AI Video Captioning" />
+    <meta property="og:description" content="Multi-style AI video captioning powered by AMD ROCm. Extract → Reason → Style." />
+    <!-- OG Image: Obsidian background, Indigo->Cyan rounded rect icon -->
+    <meta property="og:image"       content="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 630'><rect width='1200' height='630' fill='%2309090B'/><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0%25' stop-color='%236366f1'/><stop offset='100%25' stop-color='%2322d3ee'/></linearGradient></defs><rect x='80' y='80' width='100' height='100' rx='24' fill='url(%23g)'/><polygon points='108,108 108,152 148,130' fill='white'/></svg>" />
+    <meta name="twitter:card"       content="summary_large_image" />
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
   </head>
-  <body class="bg-slate-50 text-slate-800 font-sans min-h-screen">
+  <body class="bg-obsidian text-white font-sans min-h-screen antialiased">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

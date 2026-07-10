@@ -1,0 +1,115 @@
+import { useState } from 'react';
+import { Sparkles, Settings } from 'lucide-react';
+import axios from 'axios';
+
+import DragDrop from '../components/DragDrop';
+import Monitor from '../components/Monitor';
+import Matrix from '../components/Matrix';
+
+export default function Workspace() {
+  const [videoId, setVideoId] = useState<string | null>(null);
+  const [filename, setFilename] = useState<string>('');
+  const [stage, setStage] = useState<'upload' | 'processing' | 'completed'>('upload');
+  const [captions, setCaptions] = useState<any>(null);
+  const [evaluations, setEvaluations] = useState<any>(null);
+
+  const handleUploadSuccess = (id: string, name: string) => {
+    setVideoId(id);
+    setFilename(name);
+    setStage('processing');
+  };
+
+  const handleProcessingComplete = async (id: string) => {
+    try {
+      const res = await axios.get(`/api/v1/captions/${id}`);
+      setCaptions(res.data.captions);
+      setEvaluations(res.data.evaluations);
+      setStage('completed');
+    } catch (err) {
+      console.error("Failed to load completed captions:", err);
+    }
+  };
+
+  const handleReset = () => {
+    setVideoId(null);
+    setFilename('');
+    setCaptions(null);
+    setEvaluations(null);
+    setStage('upload');
+  };
+
+  return (
+    <div className="min-h-screen bg-obsidian flex flex-col selection:bg-ai-indigo/30">
+      {/* Premium Header */}
+      <header className="sticky top-0 z-40 bg-obsidian/80 backdrop-blur-md text-white border-b border-zinc-800">
+        <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-1.5 bg-gradient-to-tr from-ai-indigo to-ai-cyan rounded-lg shadow-lg shadow-ai-indigo/20">
+              <Sparkles className="h-4 w-4 text-white" />
+            </div>
+            <div>
+              <span className="font-bold tracking-tight text-sm font-display">CaptionForge AI</span>
+              <span className="ml-2 px-2 py-0.5 text-[9px] font-bold bg-ai-indigo/10 text-ai-indigo rounded border border-ai-indigo/20 uppercase tracking-widest">AMD Track 2</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-4 text-xs text-zinc-500 font-medium">
+            <span>Pipeline Agent</span>
+            <div className="h-3.5 w-px bg-zinc-800" />
+            <button className="hover:text-white transition flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ai-cyan/40 rounded-md px-1">
+              <Settings className="h-3.5 w-3.5" />
+              Settings
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Workspace */}
+      <main className="flex-1 max-w-6xl w-full mx-auto px-6 py-10 space-y-8">
+        {/* Intro */}
+        {stage === 'upload' && (
+          <div className="space-y-3 animate-fade-in">
+            <h1 className="text-3xl font-bold tracking-tight text-white font-display">
+              Transform Videos with Style-Aware Captions
+            </h1>
+            <p className="text-zinc-400 max-w-xl text-sm leading-relaxed">
+              CaptionForge AI analyzes your video content using a multi-stage semantic reasoning pipeline and renders accurate captions in four bespoke target styles.
+            </p>
+          </div>
+        )}
+
+        {stage !== 'upload' && filename && (
+          <div className="flex items-center gap-2 text-xs font-semibold text-zinc-400 uppercase tracking-wider bg-zinc-900 px-3 py-1.5 rounded-lg w-max border border-zinc-800 shadow-inner">
+            <span>Active File:</span>
+            <span className="text-white normal-case font-mono">{filename}</span>
+          </div>
+        )}
+
+        {/* Workflow states */}
+        {stage === 'upload' && (
+          <DragDrop onUploadSuccess={handleUploadSuccess} />
+        )}
+
+        {stage === 'processing' && videoId && (
+          <Monitor
+            videoId={videoId}
+            onProcessingComplete={handleProcessingComplete}
+          />
+        )}
+
+        {stage === 'completed' && videoId && captions && evaluations && (
+          <Matrix
+            videoId={videoId}
+            captions={captions}
+            evaluations={evaluations}
+            onReset={handleReset}
+          />
+        )}
+      </main>
+
+      {/* Sticky footer */}
+      <footer className="border-t border-zinc-800 py-6 text-center text-xs text-zinc-500">
+        <p>&copy; 2026 CaptionForge AI &nbsp;·&nbsp; AMD Developer Hackathon Track 2</p>
+      </footer>
+    </div>
+  );
+}

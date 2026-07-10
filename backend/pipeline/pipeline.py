@@ -54,8 +54,8 @@ class CaptionForgePipeline:
         update_progress("reasoning", "Synthesizing temporal timeline & action graph...")
         temporal_graph = self.temporal_reasoner.build_timeline(scene_analyses)
 
-        update_progress("generating", "Generating factual base caption summary...")
-        base_caption = self.caption_generator.generate_base_caption(temporal_graph)
+        update_progress("generating", "Uploading video to Gemini and generating factual base caption summary...")
+        base_caption = self.caption_generator.generate_base_caption(video_path)
         update_progress("generating", f"Base caption generated: '{base_caption}'")
 
         update_progress("generating", "Running parallel multi-head style transformer & critic feedback loop...")
@@ -65,7 +65,7 @@ class CaptionForgePipeline:
 
         for style in styles:
             # Transform
-            styled_text = self.style_transformer.transform(base_caption, style, temporal_graph["entities"])
+            styled_text = self.style_transformer.transform(base_caption, style)
             # Critic
             eval_result = self.critic.evaluate_caption(styled_text, style, temporal_graph["entities"])
             
