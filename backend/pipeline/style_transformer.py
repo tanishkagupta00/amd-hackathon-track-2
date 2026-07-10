@@ -19,15 +19,13 @@ class StyleTransformer:
         if not self.client:
             return f"[{style.upper()}] {base_caption}"
             
-        prompt = self._get_prompt(base_caption, style)
+        messages = self._build_messages(base_caption, style)
         try:
             # Using glm-5p1 as specified in the hackathon integration guide
             response = self.client.chat.completions.create(
                 model="accounts/fireworks/models/glm-5p1",
-                messages=[
-                    {"role": "user", "content": prompt}
-                ],
-                max_tokens=150,
+                messages=messages,
+                max_tokens=600,
                 temperature=0.7
             )
             text = response.choices[0].message.content.strip()
@@ -38,22 +36,34 @@ class StyleTransformer:
             
         return base_caption
 
-    def _get_prompt(self, base_caption: str, style: str) -> str:
-        base_instruction = (
-            f"Here is a factual scene description of a video:\n'{base_caption}'\n\n"
-            "Your task is to completely rewrite this description from scratch into the requested style. "
-            "Do NOT just prepend a fixed phrase to the original sentence. The output should differ entirely "
-            "in wording, structure, and the specific details emphasized to fit the tone. "
-            "Return ONLY the rewritten caption text, no markdown formatting, no intro phrases, and absolutely NO internal thinking or monologues. "
-            "CRITICAL: Do NOT output any step-by-step analysis, bullet points, or numbering. Give me ONLY the final paragraph."
+    def _build_messages(self, base_caption: str, style: str) -> list[dict]:
+        style_prompt = ""
+        if style == "formal":
+            style_prompt = "Highly objective, formal, third-person report. No conversational words or humor."
+        elif style == "sarcastic":
+            style_prompt = "Dry, ironic, mocking, and sarcastic tone. Treat the mundane actions as if they are ridiculous or overly dramatic."
+        elif style == "humorous-tech":
+            style_prompt = "Humorous paragraph heavily featuring software development, programming, or computer science jokes and metaphors (e.g., merge conflicts, legacy code, buffering)."
+        elif style == "humorous-non-tech":
+            style_prompt = "Observational comedy with general, everyday relatable humor and tropes. Do NOT use any programming/tech jokes."
+            
+        system_content = (
+            "You are a direct translation API. You DO NOT think, you DO NOT analyze, and you DO NOT output numbered lists. "
+            "You instantly output the final translated text and nothing else."
         )
         
-        if style == "formal":
-            return f"{base_instruction}\nStyle: Highly objective, formal, third-person report. No conversational words or humor."
-        elif style == "sarcastic":
-            return f"{base_instruction}\nStyle: Dry, ironic, mocking, and sarcastic tone. Treat the mundane actions as if they are ridiculous or overly dramatic."
-        elif style == "humorous-tech":
-            return f"{base_instruction}\nStyle: Humorous paragraph heavily featuring software development, programming, or computer science jokes and metaphors (e.g., merge conflicts, legacy code, buffering)."
-        elif style == "humorous-non-tech":
-            return f"{base_instruction}\nStyle: Observational comedy with general, everyday relatable humor and tropes. Do NOT use any programming/tech jokes."
-        return base_caption
+        return [
+            {"role": "system", "content": system_content},
+            {
+                "role": "user", 
+                "content": f"Style: {style_prompt}\nDescription: A cat sitting on a mat."
+            },
+            {
+                "role": "assistant",
+                "content": "A feline creature resting upon a woven floor covering."
+            },
+            {
+                "role": "user", 
+                "content": f"Style: {style_prompt}\nDescription: {base_caption}"
+            }
+        ]
