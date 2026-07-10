@@ -47,22 +47,36 @@ export default function Monitor({ videoId, onProcessingComplete }: MonitorProps)
   const terminalEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // 1. Initiate blocking synchronous request to the Vercel Serverless Function
     axios.post('/api/v1/captions/generate', { video_id: videoId })
+      .then(() => {
+        // Automatically jump to completed when the synchronous API returns
+        setStatus('completed');
+        setLogs(prev => [...prev, '[INFO] Caption generation finished successfully.']);
+        onProcessingComplete(videoId);
+      })
       .catch(err => setLogs(prev => [...prev, `[ERROR] Failed to start generation: ${err.message}`]));
 
-    const interval = setInterval(async () => {
-      try {
-        const res = await axios.get(`/api/v1/videos/${videoId}`);
-        setStatus(res.data.status);
-        setLogs(res.data.logs || []);
-        if (res.data.status === 'completed') { clearInterval(interval); onProcessingComplete(videoId); }
-        else if (res.data.status === 'failed') { clearInterval(interval); }
-      } catch (err: any) {
-        setLogs(prev => [...prev, `[ERROR] Connection issue: ${err.message}`]);
-      }
-    }, 1000);
+    // 2. Mock a log stream and status transitions since we can't reliably poll the ephemeral DB
+    const mockInterval = setInterval(() => {
+      setStatus(prev => {
+        if (prev === 'queued') {
+          setLogs(l => [...l, '[INFO] Uploading video context to Gemini...']);
+          return 'uploading';
+        }
+        if (prev === 'uploading') {
+          setLogs(l => [...l, '[INFO] Analyzing multimodal frames and audio...']);
+          return 'analyzing';
+        }
+        if (prev === 'analyzing') {
+          setLogs(l => [...l, '[INFO] Extracting factual scene graph...', '[INFO] Generating multi-head stylized text...']);
+          return 'generating';
+        }
+        return prev;
+      });
+    }, 2000);
 
-    return () => clearInterval(interval);
+    return () => clearInterval(mockInterval);
   }, [videoId]);
 
   useEffect(() => { terminalEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [logs]);

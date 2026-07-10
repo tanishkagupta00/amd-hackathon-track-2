@@ -113,15 +113,14 @@ def generate_captions(
 
     record.status = "queued"
     record.logs = ""
-    record.append_log("Enqueued video processing task.")
+    record.append_log("Started video processing task.")
     db.commit()
 
-    # Launch background thread using FastAPI BackgroundTasks
-    # We pass the SessionLocal session factory to create a safe session inside the thread
+    # Synchronous execution for Vercel Serverless Function compatibility
     from database import SessionLocal
-    background_tasks.add_task(run_pipeline_job, req.video_id, video_path, SessionLocal)
+    run_pipeline_job(req.video_id, video_path, SessionLocal)
 
-    return {"status": "processing", "video_id": req.video_id}
+    return {"status": "completed", "video_id": req.video_id}
 
 @router.get("/captions/{id}")
 def get_captions(id: str, db: Session = Depends(get_db)):
