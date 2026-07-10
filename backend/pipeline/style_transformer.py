@@ -44,7 +44,8 @@ class StyleTransformer:
             "Your task is to completely rewrite this description from scratch into the requested style. "
             "Do NOT just prepend a fixed phrase to the original sentence. The output should differ entirely "
             "in wording, structure, and the specific details emphasized to fit the tone. "
-            "Return ONLY the rewritten caption text, no markdown formatting, no intro phrases, and absolutely NO internal thinking or monologues."
+            "Return ONLY the rewritten caption text, no markdown formatting, no intro phrases, and absolutely NO internal thinking or monologues. "
+            "CRITICAL: Do NOT output any step-by-step analysis, bullet points, or numbering. Give me ONLY the final paragraph."
         )
         
         if style == "formal":
