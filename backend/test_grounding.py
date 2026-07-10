@@ -14,9 +14,9 @@ def main():
         print("Usage: python test_grounding.py <video1.mp4> <video2.mp4> ...")
         return
 
-    # Check for API key
-    if not os.environ.get("GEMINI_API_KEY") and not os.environ.get("GOOGLE_API_KEY"):
-        print("WARNING: GEMINI_API_KEY not set. Multimodal generation will fail or return stubs.")
+    # Check for Fireworks API key
+    if not os.environ.get("FIREWORKS_API_KEY"):
+        print("\nWARNING: FIREWORKS_API_KEY not set. Multimodal generation will fail or return stubs.\n")
 
     pipeline = CaptionForgePipeline()
     

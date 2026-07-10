@@ -1,11 +1,14 @@
 import os
-from google import genai
+from openai import OpenAI
 
 class StyleTransformer:
     def __init__(self):
-        self.api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+        self.api_key = os.environ.get("FIREWORKS_API_KEY")
         if self.api_key:
-            self.client = genai.Client(api_key=self.api_key)
+            self.client = OpenAI(
+                base_url="https://api.fireworks.ai/inference/v1",
+                api_key=self.api_key
+            )
         else:
             self.client = None
 
@@ -18,11 +21,16 @@ class StyleTransformer:
             
         prompt = self._get_prompt(base_caption, style)
         try:
-            response = self.client.models.generate_content(
-                model='gemini-2.5-flash',
-                contents=prompt
+            # Using deepseek-v4-pro since Qwen 3.7 is not in the models list
+            response = self.client.chat.completions.create(
+                model="accounts/fireworks/models/deepseek-v4-pro",
+                messages=[
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=150,
+                temperature=0.7
             )
-            text = response.text.strip()
+            text = response.choices[0].message.content.strip()
             if text:
                 return text
         except Exception as e:
@@ -36,7 +44,7 @@ class StyleTransformer:
             "Your task is to completely rewrite this description from scratch into the requested style. "
             "Do NOT just prepend a fixed phrase to the original sentence. The output should differ entirely "
             "in wording, structure, and the specific details emphasized to fit the tone. "
-            "Return ONLY the rewritten caption text, no markdown formatting or intro phrases."
+            "Return ONLY the rewritten caption text, no markdown formatting, no intro phrases, and absolutely NO internal thinking or monologues."
         )
         
         if style == "formal":
