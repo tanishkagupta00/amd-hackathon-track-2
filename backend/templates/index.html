@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CaptionForge AI - Video Captioning Agent Dashboard</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            primary: '#1E293B',
+                            accent: '#EA580C',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                        mono: ['Fira Code', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .glass {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="sticky top-0 z-50 bg-slate-900 text-white shadow-lg border-b border-slate-800">
+        <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="p-2 bg-gradient-to-tr from-orange-600 to-amber-500 rounded-xl shadow-md">
+                    <i data-lucide="sparkles" class="h-5 w-5 text-white"></i>
+                </div>
+                <div>
+                    <span class="font-extrabold tracking-tight text-lg">CaptionForge AI</span>
+                    <span class="ml-2 px-2 py-0.5 text-[10px] font-bold bg-orange-600/20 text-orange-400 rounded border border-orange-500/20 uppercase">AMD Hackathon</span>
+                </div>
+            </div>
+            <div class="flex items-center gap-4 text-sm text-slate-400 font-medium">
+                <span>Track 2 Agent</span>
+                <div class="h-4 w-[1px] bg-slate-800"></div>
+                <div class="flex items-center gap-1.5">
+                    <i data-lucide="cpu" class="h-4 w-4 text-orange-500"></i>
+                    <span>ROCm Accelerated</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Workspace -->
+    <main class="flex-1 max-w-6xl w-full mx-auto px-6 py-10 space-y-8">
+        
+        <!-- View 1: Upload Workspace -->
+        <div id="view-upload" class="space-y-8 animate-fade-in">
+            <div class="space-y-2">
+                <h1 class="text-3xl font-extrabold tracking-tight text-slate-800">
+                    Transform Videos with Style-Aware Captions
+                </h1>
+                <p class="text-slate-500 max-w-xl">
+                    CaptionForge AI analyzes your video content using a multi-stage semantic reasoning pipeline and renders accurate captions in four target styles.
+                </p>
+            </div>
+
+            <!-- Drag & Drop container -->
+            <div id="drop-zone" class="relative border-2 border-dashed border-slate-300 hover:border-slate-400 bg-white rounded-2xl p-12 text-center transition-all duration-300 shadow-sm cursor-pointer">
+                <input type="file" id="file-input" class="hidden" accept=".mp4,.mov,.avi">
+                <div class="flex flex-col items-center justify-center space-y-4">
+                    <div class="p-4 bg-slate-100 rounded-full text-slate-600">
+                        <i data-lucide="film" class="h-10 w-10 text-brand-primary"></i>
+                    </div>
+                    <div>
+                        <p class="text-lg font-semibold text-slate-700">Drag and drop your video file here</p>
+                        <p class="text-sm text-slate-500 mt-1">Supports MP4, MOV, or AVI format (Max 50MB)</p>
+                    </div>
+                    <button id="browse-btn" class="px-6 py-2.5 bg-brand-primary hover:bg-slate-700 text-white font-medium rounded-xl shadow-md transition">
+                        Browse Local Files
+                    </button>
+                </div>
+            </div>
+            
+            <div id="error-banner" class="hidden flex items-center gap-2 p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm font-medium">
+                <i data-lucide="alert-circle" class="h-5 w-5 shrink-0"></i>
+                <span id="error-msg"></span>
+            </div>
+        </div>
+
+        <!-- View 2: Processing Monitor -->
+        <div id="view-processing" class="hidden space-y-8 animate-fade-in">
+            <div class="flex items-center gap-2 text-xs font-semibold text-slate-500 uppercase tracking-wider bg-slate-100 px-3 py-1.5 rounded-lg w-max border border-slate-200">
+                <span>Active File:</span>
+                <span id="active-filename" class="text-slate-800 normal-case font-mono"></span>
+            </div>
+
+            <!-- Stepper -->
+            <div class="bg-white rounded-2xl p-8 border border-slate-200 shadow-sm space-y-6">
+                <div class="flex items-center justify-between border-b pb-4">
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                            <i data-lucide="cpu" class="h-5 w-5 text-orange-600"></i>
+                            Active AI Orchestration Pipeline
+                        </h3>
+                        <p class="text-sm text-slate-500 mt-0.5">Tracking real-time visual-language processing</p>
+                    </div>
+                    <span id="pipeline-status-badge" class="px-3 py-1 text-xs font-semibold rounded-full uppercase tracking-wider bg-blue-100 text-blue-800 animate-pulse">
+                        processing
+                    </span>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 relative">
+                    <!-- Step 1 -->
+                    <div id="step-preprocessor" class="flex flex-col items-center text-center space-y-2">
+                        <div class="step-num h-10 w-10 rounded-full flex items-center justify-center font-bold text-sm border-2 bg-white border-slate-300 text-slate-400">1</div>
+                        <div>
+                            <h4 class="font-semibold text-sm text-slate-700">Preprocessing</h4>
+                            <p class="text-xs text-slate-400 mt-0.5">Validating media tracks</p>
+                        </div>
+                    </div>
+                    <!-- Step 2 -->
+                    <div id="step-sampling" class="flex flex-col items-center text-center space-y-2">
+                        <div class="step-num h-10 w-10 rounded-full flex items-center justify-center font-bold text-sm border-2 bg-white border-slate-300 text-slate-400">2</div>
+                        <div>
+                            <h4 class="font-semibold text-sm text-slate-700">Sampling</h4>
+                            <p class="text-xs text-slate-400 mt-0.5">Keyframe extraction</p>
+                        </div>
+                    </div>
+                    <!-- Step 3 -->
+                    <div id="step-reasoning" class="flex flex-col items-center text-center space-y-2">
+                        <div class="step-num h-10 w-10 rounded-full flex items-center justify-center font-bold text-sm border-2 bg-white border-slate-300 text-slate-400">3</div>
+                        <div>
+                            <h4 class="font-semibold text-sm text-slate-700">Reasoning</h4>
+                            <p class="text-xs text-slate-400 mt-0.5">Object & action tagging</p>
+                        </div>
+                    </div>
+                    <!-- Step 4 -->
+                    <div id="step-generating" class="flex flex-col items-center text-center space-y-2">
+                        <div class="step-num h-10 w-10 rounded-full flex items-center justify-center font-bold text-sm border-2 bg-white border-slate-300 text-slate-400">4</div>
+                        <div>
+                            <h4 class="font-semibold text-sm text-slate-700">Generating</h4>
+                            <p class="text-xs text-slate-400 mt-0.5">Style transformers</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Terminal log stream -->
+            <div class="bg-slate-950 text-slate-100 rounded-2xl p-6 border border-slate-800 shadow-2xl flex flex-col h-[350px]">
+                <div class="flex items-center gap-2 border-b border-slate-800 pb-3 mb-3 text-slate-400 text-sm font-semibold">
+                    <i data-lucide="terminal" class="h-4 w-4 text-orange-500"></i>
+                    <span>System Execution Log Monitor</span>
+                </div>
+                <div id="terminal-logs" class="flex-1 overflow-y-auto space-y-1 font-mono text-xs text-slate-300 leading-relaxed pr-2">
+                    <div class="text-slate-600 italic">Initializing console streaming...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- View 3: Results Matrix -->
+        <div id="view-completed" class="hidden space-y-8 animate-fade-in">
+            <div class="flex justify-between items-center bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                <div>
+                    <h3 class="text-xl font-bold text-slate-800">Generated Style Matrix</h3>
+                    <p class="text-sm text-slate-500 mt-0.5">Compare accuracy scores and style outputs side-by-side</p>
+                </div>
+                <div class="flex gap-3">
+                    <button id="download-json-btn" class="flex items-center gap-2 px-5 py-2.5 bg-brand-primary hover:bg-slate-700 text-white font-medium rounded-xl transition shadow-md text-sm">
+                        <i data-lucide="download" class="h-4 w-4"></i>
+                        Download Submission JSON
+                    </button>
+                    <button id="reset-btn" class="flex items-center gap-2 px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-xl transition text-sm border border-slate-200">
+                        <i data-lucide="refresh-cw" class="h-4 w-4"></i>
+                        Process Another Video
+                    </button>
+                </div>
+            </div>
+
+            <!-- Comparative grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Formal Card -->
+                <div class="flex flex-col border border-slate-300 bg-slate-50/50 rounded-2xl p-6 transition-all duration-300 hover:shadow-md">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <h4 class="font-bold text-slate-800">Formal Report</h4>
+                            <p class="text-xs text-slate-400 mt-0.5">Objective, passive-voice corporate summary.</p>
+                        </div>
+                        <button onclick="copyText('card-formal-text', 'formal')" class="p-2 bg-white rounded-lg hover:bg-slate-100 border border-slate-200 text-slate-600 transition">
+                            <i data-lucide="copy" class="h-4 w-4"></i>
+                        </button>
+                    </div>
+                    <div id="card-formal-text" class="flex-1 bg-white p-4 rounded-xl border border-slate-200 text-sm text-slate-700 leading-relaxed italic mb-4"></div>
+                    <div class="border-t border-slate-200/60 pt-4 flex justify-between items-center">
+                        <div class="flex gap-4">
+                            <div class="flex flex-col">
+                                <span class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Accuracy</span>
+                                <span id="val-formal-acc" class="text-sm font-bold text-green-600">100%</span>
+                            </div>
+                            <div class="flex flex-col">
+                                <span class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Style Match</span>
+                                <span id="val-formal-style" class="text-sm font-bold text-slate-700">100%</span>
+                            </div>
+                        </div>
+                        <span id="badge-formal" class="text-xs font-semibold px-2.5 py-1 rounded-full"></span>
+                    </div>
+                </div>
+
+                <!-- Sarcastic Card -->
+                <div class="flex flex-col border border-amber-300 bg-amber-50/30 rounded-2xl p-6 transition-all duration-300 hover:shadow-md">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <h4 class="font-bold text-slate-800">Sarcastic Tone</h4>
+                            <p class="text-xs text-slate-400 mt-0.5">Dry observational irony and light mocking.</p>
+                        </div>
+                        <button onclick="copyText('card-sarcastic-text', 'sarcastic')" class="p-2 bg-white rounded-lg hover:bg-slate-100 border border-slate-200 text-slate-600 transition">
+                            <i data-lucide="copy" class="h-4 w-4"></i>
+                        </button>
+                    </div>
+                    <div id="card-sarcastic-text" class="flex-1 bg-white p-4 rounded-xl border border-slate-200 text-sm text-slate-700 leading-relaxed italic mb-4"></div>
+                    <div class="border-t border-slate-200/60 pt-4 flex justify-between items-center">
+                        <div class="flex gap-4">
+                            <div class="flex flex-col">
+                                <span class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Accuracy</span>
+                                <span id="val-sarcastic-acc" class="text-sm font-bold text-green-600">100%</span>
+                            </div>
+                            <div class="flex flex-col">
+                                <span class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Style Match</span>
+                                <span id="val-sarcastic-style" class="text-sm font-bold text-slate-700">100%</span>
+                            </div>
+                        </div>
+                        <span id="badge-sarcastic" class="text-xs font-semibold px-2.5 py-1 rounded-full"></span>
+                    </div>
+                </div>
+
+                <!-- Humorous Tech Card -->
+                <div class="flex flex-col border border-blue-300 bg-blue-50/30 rounded-2xl p-6 transition-all duration-300 hover:shadow-md">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <h4 class="font-bold text-slate-800">Humorous (Tech)</h4>
+                            <p class="text-xs text-slate-400 mt-0.5">Coding, hardware, and workflow metaphors.</p>
+                        </div>
+                        <button onclick="copyText('card-tech-text', 'tech')" class="p-2 bg-white rounded-lg hover:bg-slate-100 border border-slate-200 text-slate-600 transition">
+                            <i data-lucide="copy" class="h-4 w-4"></i>
+                        </button>
+                    </div>
+                    <div id="card-tech-text" class="flex-1 bg-white p-4 rounded-xl border border-slate-200 text-sm text-slate-700 leading-relaxed italic mb-4"></div>
+                    <div class="border-t border-slate-200/60 pt-4 flex justify-between items-center">
+                        <div class="flex gap-4">
+                            <div class="flex flex-col">
+                                <span class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Accuracy</span>
+                                <span id="val-tech-acc" class="text-sm font-bold text-green-600">100%</span>
+                            </div>
+                            <div class="flex flex-col">
+                                <span class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Style Match</span>
+                                <span id="val-tech-style" class="text-sm font-bold text-slate-700">100%</span>
+                            </div>
+                        </div>
+                        <span id="badge-tech" class="text-xs font-semibold px-2.5 py-1 rounded-full"></span>
+                    </div>
+                </div>
+
+                <!-- Humorous Non-Tech Card -->
+                <div class="flex flex-col border border-green-300 bg-green-50/30 rounded-2xl p-6 transition-all duration-300 hover:shadow-md">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <h4 class="font-bold text-slate-800">Humorous (Non-Tech)</h4>
+                            <p class="text-xs text-slate-400 mt-0.5">Everyday relatable situations and tropes.</p>
+                        </div>
+                        <button onclick="copyText('card-nontech-text', 'nontech')" class="p-2 bg-white rounded-lg hover:bg-slate-100 border border-slate-200 text-slate-600 transition">
+                            <i data-lucide="copy" class="h-4 w-4"></i>
+                        </button>
+                    </div>
+                    <div id="card-nontech-text" class="flex-1 bg-white p-4 rounded-xl border border-slate-200 text-sm text-slate-700 leading-relaxed italic mb-4"></div>
+                    <div class="border-t border-slate-200/60 pt-4 flex justify-between items-center">
+                        <div class="flex gap-4">
+                            <div class="flex flex-col">
+                                <span class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Accuracy</span>
+                                <span id="val-nontech-acc" class="text-sm font-bold text-green-600">100%</span>
+                            </div>
+                            <div class="flex flex-col">
+                                <span class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Style Match</span>
+                                <span id="val-nontech-style" class="text-sm font-bold text-slate-700">100%</span>
+                            </div>
+                        </div>
+                        <span id="badge-nontech" class="text-xs font-semibold px-2.5 py-1 rounded-full"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-slate-900 border-t border-slate-800 py-6 text-center text-xs text-slate-500 mt-auto">
+        <p>&copy; 2026 CaptionForge AI. Built for AMD Developer Hackathon Track 2.</p>
+    </footer>
+
+    <!-- Logic scripting -->
+    <script>
+        // DOM Elements
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const browseBtn = document.getElementById('browse-btn');
+        const errorBanner = document.getElementById('error-banner');
+        const errorMsg = document.getElementById('error-msg');
+        
+        const viewUpload = document.getElementById('view-upload');
+        const viewProcessing = document.getElementById('view-processing');
+        const viewCompleted = document.getElementById('view-completed');
+        
+        const activeFilename = document.getElementById('active-filename');
+        const pipelineStatusBadge = document.getElementById('pipeline-status-badge');
+        const terminalLogs = document.getElementById('terminal-logs');
+        
+        let activeVideoId = null;
+        let pollInterval = null;
+        let finalPayloadData = null;
+
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        // Drag & drop handlers
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('border-orange-500', 'bg-orange-50/30');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('border-orange-500', 'bg-orange-50/30');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('border-orange-500', 'bg-orange-50/30');
+            if (e.dataTransfer.files.length > 0) {
+                validateAndUpload(e.dataTransfer.files[0]);
+            }
+        });
+
+        dropZone.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                validateAndUpload(e.target.files[0]);
+            }
+        });
+
+        function showError(msg) {
+            errorMsg.textContent = msg;
+            errorBanner.classList.remove('hidden');
+        }
+
+        function hideError() {
+            errorBanner.classList.add('hidden');
+        }
+
+        async function validateAndUpload(file) {
+            hideError();
+            const ext = file.name.split('.').pop().toLowerCase();
+            if (!['mp4', 'mov', 'avi'].includes(ext)) {
+                showError("Invalid file format. Please upload an MP4, MOV, or AVI video.");
+                return;
+            }
+
+            if (file.size > 50 * 1024 * 1024) {
+                showError("File size exceeds 50MB limit.");
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append("file", file);
+
+            try {
+                // Change UI status to loading on drag zone
+                browseBtn.textContent = "Uploading...";
+                browseBtn.disabled = true;
+
+                const response = await fetch('/api/v1/videos', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const errData = await response.json();
+                    throw new Error(errData.detail || "Upload failed");
+                }
+
+                const data = await response.json();
+                startPipeline(data.video_id, file.name);
+            } catch (err) {
+                showError(err.message);
+                browseBtn.textContent = "Browse Local Files";
+                browseBtn.disabled = false;
+            }
+        }
+
+        async function startPipeline(videoId, filename) {
+            activeVideoId = videoId;
+            activeFilename.textContent = filename;
+            
+            // Switch view
+            viewUpload.classList.add('hidden');
+            viewProcessing.classList.remove('hidden');
+            
+            // Call generate API
+            try {
+                const res = await fetch('/api/v1/captions/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ video_id: videoId })
+                });
+                
+                if (!res.ok) throw new Error("Failed to initialize pipeline");
+                
+                // Start polling logs
+                pollPipelineStatus(videoId);
+            } catch (err) {
+                appendLog(`[ERROR] Failed to start generation: ${err.message}`, true);
+            }
+        }
+
+        function appendLog(msg, isError = False) {
+            const div = document.createElement('div');
+            div.className = isError ? 'text-red-400 font-semibold' : 'text-slate-300';
+            div.textContent = msg;
+            terminalLogs.appendChild(div);
+            terminalLogs.scrollTop = terminalLogs.scrollHeight;
+        }
+
+        function updateSteps(status) {
+            const STAGES = ['preprocessor', 'sampling', 'reasoning', 'generating', 'completed'];
+            const currentIndex = STAGES.indexOf(status);
+            
+            STAGES.forEach((stageId, idx) => {
+                const el = document.getElementById(`step-${stageId}`);
+                if (!el) return;
+                
+                const numBox = el.querySelector('.step-num');
+                const isCompleted = idx < currentIndex || status === 'completed';
+                const isActive = idx === currentIndex && status !== 'completed' && status !== 'failed';
+                const isFailed = status === 'failed' && idx === currentIndex;
+                
+                if (isCompleted) {
+                    numBox.className = "step-num h-10 w-10 rounded-full flex items-center justify-center font-bold text-sm border-2 bg-green-600 border-green-600 text-white shadow-md";
+                    numBox.innerHTML = '<i data-lucide="check" class="h-4 w-4"></i>';
+                } else if (isActive) {
+                    numBox.className = "step-num h-10 w-10 rounded-full flex items-center justify-center font-bold text-sm border-2 bg-orange-500 border-orange-500 text-white shadow-md animate-pulse";
+                    numBox.textContent = idx + 1;
+                } else if (isFailed) {
+                    numBox.className = "step-num h-10 w-10 rounded-full flex items-center justify-center font-bold text-sm border-2 bg-red-600 border-red-600 text-white shadow-md";
+                    numBox.innerHTML = '<i data-lucide="x" class="h-4 w-4"></i>';
+                } else {
+                    numBox.className = "step-num h-10 w-10 rounded-full flex items-center justify-center font-bold text-sm border-2 bg-white border-slate-300 text-slate-400";
+                    numBox.textContent = idx + 1;
+                }
+            });
+            lucide.createIcons();
+        }
+
+        function pollPipelineStatus(videoId) {
+            terminalLogs.innerHTML = ""; // Clear logs
+            
+            pollInterval = setInterval(async () => {
+                try {
+                    const res = await fetch(`/api/v1/videos/${videoId}`);
+                    const data = await res.json();
+                    
+                    pipelineStatusBadge.textContent = data.status;
+                    
+                    // Render step updates
+                    updateSteps(data.status);
+                    
+                    // Render logs
+                    terminalLogs.innerHTML = "";
+                    data.logs.forEach(log => {
+                        appendLog(log, log.includes("[ERROR]") || log.includes("CRITICAL"));
+                    });
+                    
+                    if (data.status === 'completed') {
+                        clearInterval(pollInterval);
+                        loadFinalResult(videoId);
+                    } else if (data.status === 'failed') {
+                        clearInterval(pollInterval);
+                        pipelineStatusBadge.className = "px-3 py-1 text-xs font-semibold rounded-full uppercase tracking-wider bg-red-100 text-red-800";
+                    }
+                } catch (err) {
+                    appendLog(`[ERROR] Connection error: ${err.message}`, true);
+                }
+            }, 1000);
+        }
+
+        async function loadFinalResult(videoId) {
+            try {
+                const res = await fetch(`/api/v1/captions/${videoId}`);
+                const data = await res.json();
+                
+                finalPayloadData = data;
+                
+                // Set text cards
+                document.getElementById('card-formal-text').textContent = `"${data.captions.formal}"`;
+                document.getElementById('card-sarcastic-text').textContent = `"${data.captions.sarcastic}"`;
+                document.getElementById('card-tech-text').textContent = `"${data.captions['humorous-tech']}"`;
+                document.getElementById('card-nontech-text').textContent = `"${data.captions['humorous-non-tech']}"`;
+                
+                // Set evaluations
+                renderEval('formal', data.evaluations.formal);
+                renderEval('sarcastic', data.evaluations.sarcastic);
+                renderEval('tech', data.evaluations['humorous-tech']);
+                renderEval('nontech', data.evaluations['humorous-non-tech']);
+                
+                // Show completed view
+                viewProcessing.classList.add('hidden');
+                viewCompleted.classList.remove('hidden');
+            } catch (err) {
+                appendLog(`[ERROR] Failed to fetch final captions: ${err.message}`, true);
+            }
+        }
+
+        function renderEval(styleId, ev) {
+            document.getElementById(`val-${styleId}-acc`).textContent = `${(ev.accuracy_score * 100).toFixed(0)}%`;
+            document.getElementById(`val-${styleId}-style`).textContent = `${(ev.style_score * 100).toFixed(0)}%`;
+            
+            const badge = document.getElementById(`badge-${styleId}`);
+            if (ev.hallucination_detected) {
+                badge.className = "text-xs font-semibold px-2.5 py-1 rounded-full bg-red-50 border border-red-200 text-red-600";
+                badge.textContent = "Hallucination Cleansed";
+            } else {
+                badge.className = "text-xs font-semibold px-2.5 py-1 rounded-full bg-green-50 border border-green-200 text-green-700";
+                badge.textContent = "Factual Integrity Verified";
+            }
+        }
+
+        function copyText(elementId, label) {
+            const text = document.getElementById(elementId).textContent.replace(/^"|"$/g, '');
+            navigator.clipboard.writeText(text);
+            
+            // Flash notification temporarily on button click
+            const notification = document.createElement('div');
+            notification.className = "fixed bottom-5 right-5 bg-green-600 text-white px-4 py-2 rounded-lg text-sm shadow-md animate-fade-in z-50 font-semibold";
+            notification.textContent = `Copied ${label} caption!`;
+            document.body.appendChild(notification);
+            setTimeout(() => notification.remove(), 2000);
+        }
+
+        document.getElementById('download-json-btn').addEventListener('click', () => {
+            if (!finalPayloadData) return;
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(finalPayloadData, null, 2));
+            const dl = document.createElement('a');
+            dl.setAttribute("href", dataStr);
+            dl.setAttribute("download", `captionforge_result_${activeVideoId}.json`);
+            document.body.appendChild(dl);
+            dl.click();
+            dl.remove();
+        });
+
+        document.getElementById('reset-btn').addEventListener('click', () => {
+            activeVideoId = null;
+            pollInterval = null;
+            finalPayloadData = null;
+            browseBtn.textContent = "Browse Local Files";
+            browseBtn.disabled = false;
+            fileInput.value = "";
+            
+            viewCompleted.classList.add('hidden');
+            viewUpload.classList.remove('hidden');
+        });
+    </script>
+</body>
+</html>

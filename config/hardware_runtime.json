@@ -1,0 +1,13 @@
+{
+  "hardware": {
+    "acceleration": "ROCm",
+    "version": "6.0",
+    "precision": "bfloat16",
+    "target_device": "AMD Radeon GPU"
+  },
+  "runtime": {
+    "max_duration_seconds": 60,
+    "max_vram_limit_gb": 16,
+    "frame_sample_rate_hz": 2.0
+  }
+}
