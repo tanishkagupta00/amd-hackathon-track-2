@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { AlertCircle } from 'lucide-react';
 import axios from 'axios';
+import API_BASE_URL from '../apiConfig';
 
 interface DragDropProps {
   onUploadSuccess: (videoId: string, filename: string) => void;
@@ -164,19 +165,19 @@ export default function DragDrop({ onUploadSuccess }: DragDropProps) {
       const tmpResponse = await axios.post('https://tmpfiles.org/api/v1/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      
+
       const tmpUrl = tmpResponse.data?.data?.url;
       if (!tmpUrl) throw new Error("Failed to retrieve temporary URL.");
-      
+
       // Convert to direct download URL
       const directUrl = tmpUrl.replace('tmpfiles.org/', 'tmpfiles.org/dl/');
 
-      // 2. Send the URL to Vercel backend for server-side download
+      // 2. Send the URL to the backend for server-side download
       const response = await axios.post('/api/v1/videos/url', {
         url: directUrl,
         filename: file.name
       });
-      
+
       onUploadSuccess(response.data.video_id, response.data.filename);
     } catch (err: any) {
       if (err.response?.status === 413) {
