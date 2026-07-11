@@ -2,7 +2,10 @@ import os
 import uuid
 import shutil
 import logging
-from fastapi import APIRouter, Depends, UploadFile, File, BackgroundTasks, HTTPException
+from fastapi import APIRouter, Depends, UploadFile, File, BackgroundTasks, Request, HTTPException
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field
+from typing import List, Optional
 from sqlalchemy.orm import Session
 from typing import List, Dict, Any
 
@@ -170,7 +173,7 @@ def run_pipeline_job(video_id: str, video_path: str, db_session_factory):
     finally:
         db.close()
 
-@router.post("/captions/generate")
+@router.post("/captions/generate", response_model=CaptionResult)
 def generate_captions(
     req: CaptionGenerationRequest,
     background_tasks: BackgroundTasks,
@@ -194,7 +197,12 @@ def generate_captions(
     tmp_dir = None
 
     try:
-        # ── Path A: video_url provided — fully self-contained ─────────────────
+        logger.info(
+            "[/captions/generate] request=%s has_video_url=%s client_host=%s",
+            req.video_id,
+            bool(req.video_url),
+            getattr(req, "client_host", None),
+        )
         if req.video_url:
             logger.info(f"[generate] Self-contained mode — downloading from URL: {req.video_url[:80]}")
 
@@ -243,17 +251,26 @@ def generate_captions(
 
             if last_error:
                 raise HTTPException(
-                    status_code=500,
-                    detail=f"Failed to download video after 3 attempts: {str(last_error)}"
+                    status_code=400,
+                    detail=str(last_error)
                 )
 
-            res = pipeline.process_video(video_path)
-            return {
-                "status": "completed",
-                "video_id": req.video_id,
-                "captions": res["captions"],
-                "evaluations": res["evaluations"],
-            }
+            try:
+                res = pipeline.process_video(video_path)
+                return CaptionResult(
+                    status="completed",
+                    video_id=req.video_id,
+                    base_caption=res.get("base_caption"),
+                    captions={
+                        k: StyleItem(style=k, caption=v)
+                        for k, v in (res.get("captions") or {}).items()
+                        if isinstance(k, str)
+                    },
+                    evaluations=res.get("evaluations") or {},
+                )
+            except Exception as e:
+                logger.exception("[/captions/generate] pipeline failed")
+                raise HTTPException(status_code=500, detail=str(e))
 
         # ── Path B: no video_url — legacy DB lookup (local / persistent server) ─
         record = db.query(VideoRecord).filter(VideoRecord.id == req.video_id).first()

@@ -13,7 +13,7 @@ class CaptionForgePipeline:
         self.style_transformer = StyleTransformer()
         self.critic = CaptionCritic()
 
-    def process_video(self, video_path: str, progress_callback = None) -> Dict[str, Any]:
+    def process_video(self, video_path: str, progress_callback = None, styles = None) -> Dict[str, Any]:
         """
         Runs the full video captioning pipeline.
         """
@@ -30,25 +30,35 @@ class CaptionForgePipeline:
         update_progress("analyzing", f"Base caption generated: '{base_caption}'")
 
         update_progress("generating", "Running parallel multi-head style transformer & critic feedback loop...")
-        styles = ["formal", "sarcastic", "humorous-tech", "humorous-non-tech"]
+        styles = styles or ["formal", "sarcastic", "humorous-tech", "humorous-non-tech"]
         captions = {}
         evaluations = {}
 
         for style in styles:
-            # Transform
-            styled_text = self.style_transformer.transform(base_caption, style)
-            # Critic
-            eval_result = self.critic.evaluate_caption(styled_text, style, [])
-            
-            captions[style] = eval_result["caption"]
-            evaluations[style] = {
-                "accuracy_score": eval_result["accuracy_score"],
-                "style_score": eval_result["style_score"],
-                "hallucination_detected": eval_result["hallucination_detected"],
-                "hallucinated_words": eval_result["hallucinated_words"],
-                "style_reasons": eval_result["style_reasons"]
-            }
-            update_progress("generating", f"Compiled '{style}' style caption with accuracy: {eval_result['accuracy_score']}.")
+            try:
+                styled_text = self.style_transformer.transform(base_caption, style)
+                eval_result = self.critic.evaluate_caption(styled_text, style, [])
+
+                captions[style] = eval_result["caption"]
+                evaluations[style] = {
+                    "accuracy_score": eval_result["accuracy_score"],
+                    "style_score": eval_result["style_score"],
+                    "hallucination_detected": eval_result["hallucination_detected"],
+                    "hallucinated_words": eval_result["hallucinated_words"],
+                    "style_reasons": eval_result["style_reasons"]
+                }
+                update_progress("generating", f"Compiled '{style}' style caption with accuracy: {eval_result['accuracy_score']}.")
+            except Exception as e:
+                logger.warning(f"[pipeline] style '{style}' failed: {e}")
+                captions[style] = f"[{style.upper()}] Style generation failed: {str(e)}"
+                evaluations[style] = {
+                    "accuracy_score": 0.0,
+                    "style_score": 0.0,
+                    "hallucination_detected": False,
+                    "hallucinated_words": [],
+                    "style_reasons": [f"Generation failed: {str(e)}"]
+                }
+                update_progress("generating", f"Style '{style}' failed: {str(e)}")
 
         update_progress("completed", "Pipeline run finished successfully.")
 

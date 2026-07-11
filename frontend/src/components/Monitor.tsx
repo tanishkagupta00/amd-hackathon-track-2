@@ -68,7 +68,21 @@ export default function Monitor({ videoId, videoUrl, onProcessingComplete }: Mon
         }
       })
       .catch(err => {
-        const errorDetail = err.response?.data?.detail || err.message;
+        const errData = err.response?.data;
+        let detail: string | undefined;
+
+        // FastAPI can return either a plain string detail or a ValidationError shape
+        // for errors raised via HTTPException(500, detail=...).
+        if (typeof errData?.detail === 'string') {
+          detail = errData.detail;
+        } else if (typeof errData?.detail === 'object' && errData?.detail?.errors) {
+          // Fallback for nested validation error shapes
+          detail = errData.detail.errors?.[0]?.msg || errData.detail.msg;
+        } else if (typeof errData === 'string') {
+          detail = errData;
+        }
+
+        const errorDetail = detail || err.message || 'Unknown error';
         setLogs(prev => [...prev, `[ERROR] Failed to start generation: ${errorDetail}`]);
       });
 

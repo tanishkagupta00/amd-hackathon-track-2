@@ -153,7 +153,10 @@ def _upload_and_wait(client, video_path: str, mime_type: str, display_name: str)
             client.files.delete(name=video_file.name)
         except Exception:
             pass
-        raise Exception("FAILED")   # caller catches this string to decide whether to retry
+        raise Exception(
+                f"Gemini File API processing failed for `{display_name}` after waiting "
+                f"{max_wait}s. Check file format/size and retry."
+            )
 
     return video_file
 

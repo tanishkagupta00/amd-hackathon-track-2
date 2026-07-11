@@ -12,10 +12,6 @@ class VideoUrlUploadRequest(BaseModel):
 
 class CaptionGenerationRequest(BaseModel):
     video_id: str
-    # video_url is passed directly to make /captions/generate self-contained on Vercel.
-    # Vercel runs each serverless function in an isolated container with an ephemeral /tmp,
-    # so the DB record written during upload may not exist by the time generate runs.
-    # When video_url is provided the route downloads the file fresh and skips the DB lookup.
     video_url: Optional[str] = None
     styles: List[str] = Field(default=["formal", "sarcastic", "humorous-tech", "humorous-non-tech"])
 
@@ -27,6 +23,18 @@ class CaptionsSchema(BaseModel):
 
     class Config:
         populate_by_name = True
+
+class StyleItem(BaseModel):
+    style: str
+    caption: Optional[str] = None
+    error: Optional[str] = None
+
+class CaptionResult(BaseModel):
+    status: str
+    video_id: str
+    base_caption: Optional[str] = None
+    captions: Dict[str, StyleItem] = {}
+    evaluations: Dict[str, Any] = {}
 
 class TaskCaptionResult(BaseModel):
     task_id: str
