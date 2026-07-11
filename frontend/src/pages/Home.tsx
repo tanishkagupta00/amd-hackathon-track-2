@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { Sparkles, Video, BrainCircuit, Wand2, ChevronRight, Github, Zap, Shield, Layers, Gauge, Code2, Target, CheckCircle2, Eye, Cpu, Clock } from 'lucide-react';
 import TextGalaxy from '../components/TextGalaxy';
+import Shuffle from '../components/Shuffle';
 
 export default function Home() {
   const navigate = useNavigate();
@@ -63,7 +64,7 @@ export default function Home() {
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full
               bg-ai-gold/5 border border-ai-gold/25 text-sm text-ai-accent backdrop-blur-[10px]">
               <span className="h-2 w-2 rounded-full bg-ai-gold animate-pulse" />
-              AMD Developer Hackathon · Track 2
+              <Shuffle text="AMD Developer Hackathon · Track 2" />
             </div>
 
             {/* H1 */}
