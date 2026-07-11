@@ -1,7 +1,42 @@
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sparkles, Video, BrainCircuit, Wand2, ChevronRight, Github, Zap, Shield, Layers, Gauge, Code2, Target, CheckCircle2, Eye, Cpu, Clock } from 'lucide-react';
 import TextGalaxy from '../components/TextGalaxy';
 import Shuffle from '../components/Shuffle';
+
+function FadeIn({ children, delay = 0, className = "" }: { children: React.ReactNode, delay?: number, className?: string }) {
+  const [isVisible, setVisible] = useState(false);
+  const domRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          setVisible(true);
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.1 });
+    
+    if (domRef.current) observer.observe(domRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div
+      ref={domRef}
+      className={className}
+      style={{
+        opacity: isVisible ? 1 : 0,
+        transform: isVisible ? 'translateY(0)' : 'translateY(40px)',
+        transition: `opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1) ${delay}s, transform 0.8s cubic-bezier(0.16, 1, 0.3, 1) ${delay}s`,
+        willChange: 'opacity, transform'
+      }}
+    >
+      {children}
+    </div>
+  );
+}
 
 export default function Home() {
   const navigate = useNavigate();
@@ -58,7 +93,7 @@ export default function Home() {
 
         {/* ── Hero Section ── */}
         <section className="min-h-screen flex flex-col items-center justify-center text-center px-4 py-20">
-          <div className="max-w-4xl space-y-8 mt-10 mb-20">
+          <FadeIn className="max-w-4xl space-y-8 mt-10 mb-20">
 
             {/* Live badge */}
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full
@@ -105,28 +140,28 @@ export default function Home() {
                 { label: 'Multi-Stage', value: 'AI Pipeline' },
                 { label: 'High Accuracy', value: 'Zero Hallucination' }
               ].map((stat, i) => (
-                <div key={i} className="text-center">
+                <FadeIn key={i} delay={0.1 * (i + 1)} className="text-center">
                   <div className="text-2xl font-bold hero-title mb-1">
                     {stat.label}
                   </div>
                   <div className="text-xs text-zinc-500">{stat.value}</div>
-                </div>
+                </FadeIn>
               ))}
             </div>
-          </div>
+          </FadeIn>
         </section>
 
         {/* ── Core Features ── */}
         <section className="py-20 px-4">
           <div className="max-w-6xl mx-auto">
-            <div className="text-center mb-16">
+            <FadeIn className="text-center mb-16">
               <h2 className="text-4xl md:text-5xl font-bold font-display mb-4">
                 Powered by <span className="hero-title">Multi-Agent AI</span>
               </h2>
               <p className="text-zinc-400 max-w-2xl mx-auto">
                 A modular pipeline that extracts visual semantics, reasons about temporal context, and transforms into styled captions.
               </p>
-            </div>
+            </FadeIn>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {[
@@ -145,18 +180,19 @@ export default function Home() {
                   title: 'Style Matrix',
                   body: 'Parallel style transformers output Formal, Sarcastic, Humorous-Tech, and Humorous-Non-Tech captions.',
                 },
-              ].map(({ Icon, title, body }) => (
-                <div
-                  key={title}
-                  className="card p-7 rounded-2xl group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ai-gold/40"
-                  tabIndex={0}
-                >
-                  <div className={`h-12 w-12 rounded-xl flex items-center justify-center mb-5 bg-gradient-to-br from-zinc-800 to-zinc-900 border border-zinc-700/50 shadow-lg`}>
-                    <Icon className="h-6 w-6 text-ai-gold group-hover:text-ai-goldLight transition-colors" />
+              ].map(({ Icon, title, body }, i) => (
+                <FadeIn key={title} delay={0.1 * i}>
+                  <div
+                    className="card p-7 rounded-2xl group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ai-gold/40 h-full"
+                    tabIndex={0}
+                  >
+                    <div className={`h-12 w-12 rounded-xl flex items-center justify-center mb-5 bg-gradient-to-br from-zinc-800 to-zinc-900 border border-zinc-700/50 shadow-lg`}>
+                      <Icon className="h-6 w-6 text-ai-gold group-hover:text-ai-goldLight transition-colors" />
+                    </div>
+                    <h3 className="text-lg font-bold text-white font-display mb-3 group-hover:text-ai-goldLight transition-colors">{title}</h3>
+                    <p className="text-sm text-zinc-400 leading-relaxed">{body}</p>
                   </div>
-                  <h3 className="text-lg font-bold text-white font-display mb-3 group-hover:text-ai-goldLight transition-colors">{title}</h3>
-                  <p className="text-sm text-zinc-400 leading-relaxed">{body}</p>
-                </div>
+                </FadeIn>
               ))}
             </div>
           </div>
@@ -165,14 +201,14 @@ export default function Home() {
         {/* ── How It Works ── */}
         <section className="py-20 px-4 bg-zinc-900/10">
           <div className="max-w-6xl mx-auto">
-            <div className="text-center mb-16">
+            <FadeIn className="text-center mb-16">
               <h2 className="text-4xl md:text-5xl font-bold font-display mb-4">
                 How It <span className="hero-title">Works</span>
               </h2>
               <p className="text-zinc-400 max-w-2xl mx-auto">
                 A seamless multi-stage pipeline that transforms raw video into styled captions with pinpoint accuracy.
               </p>
-            </div>
+            </FadeIn>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {[
@@ -180,8 +216,8 @@ export default function Home() {
                 { step: '02', title: 'Scene Analysis', desc: 'AI detects scenes and extracts key frames', Icon: Eye },
                 { step: '03', title: 'Temporal Context', desc: 'Reasoning engine builds narrative flow', Icon: BrainCircuit },
                 { step: '04', title: 'Style Generation', desc: 'Four parallel style transformations', Icon: Wand2 }
-              ].map(({ step, title, desc, Icon }) => (
-                <div key={step} className="relative">
+              ].map(({ step, title, desc, Icon }, i) => (
+                <FadeIn key={step} delay={0.1 * i} className="relative">
                   <div className="card p-6 rounded-xl h-full group">
                     <div className="text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-br from-ai-gold/20 to-ai-goldLight/20 mb-4 group-hover:from-ai-gold/40 group-hover:to-ai-goldLight/40 transition-all">
                       {step}
@@ -190,7 +226,7 @@ export default function Home() {
                     <h3 className="text-lg font-bold text-white mb-2">{title}</h3>
                     <p className="text-sm text-zinc-400">{desc}</p>
                   </div>
-                </div>
+                </FadeIn>
               ))}
             </div>
           </div>
@@ -199,14 +235,14 @@ export default function Home() {
         {/* ── Key Features ── */}
         <section className="py-20 px-4">
           <div className="max-w-6xl mx-auto">
-            <div className="text-center mb-16">
+            <FadeIn className="text-center mb-16">
               <h2 className="text-4xl md:text-5xl font-bold font-display mb-4">
                 Built for <span className="hero-title">Performance</span>
               </h2>
               <p className="text-zinc-400 max-w-2xl mx-auto">
                 Production-ready architecture with enterprise-grade reliability and speed.
               </p>
-            </div>
+            </FadeIn>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {[
@@ -216,12 +252,14 @@ export default function Home() {
                 { Icon: Gauge, title: 'High Accuracy', desc: 'Multi-stage validation ensures caption quality and style adherence' },
                 { Icon: Code2, title: 'Docker Ready', desc: 'One-command deployment with full containerization support' },
                 { Icon: Target, title: 'Style Precision', desc: 'Fine-tuned transformers for each of the four required styles' }
-              ].map(({ Icon, title, desc }) => (
-                <div key={title} className="card p-6 rounded-xl group">
-                  <Icon className="h-8 w-8 text-ai-gold mb-4 group-hover:text-ai-goldLight transition-colors" />
-                  <h3 className="text-lg font-semibold text-white mb-2">{title}</h3>
-                  <p className="text-sm text-zinc-400 leading-relaxed">{desc}</p>
-                </div>
+              ].map(({ Icon, title, desc }, i) => (
+                <FadeIn key={title} delay={0.05 * i}>
+                  <div className="card p-6 rounded-xl group h-full">
+                    <Icon className="h-8 w-8 text-ai-gold mb-4 group-hover:text-ai-goldLight transition-colors" />
+                    <h3 className="text-lg font-semibold text-white mb-2">{title}</h3>
+                    <p className="text-sm text-zinc-400 leading-relaxed">{desc}</p>
+                  </div>
+                </FadeIn>
               ))}
             </div>
           </div>
@@ -230,14 +268,14 @@ export default function Home() {
         {/* ── Tech Stack ── */}
         <section className="py-20 px-4 bg-zinc-900/10">
           <div className="max-w-6xl mx-auto">
-            <div className="text-center mb-16">
+            <FadeIn className="text-center mb-16">
               <h2 className="text-4xl md:text-5xl font-bold font-display mb-4">
                 Powered by <span className="hero-title">Modern Stack</span>
               </h2>
               <p className="text-zinc-400 max-w-2xl mx-auto">
                 Built with cutting-edge AI models and production-grade infrastructure.
               </p>
-            </div>
+            </FadeIn>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
               {[
@@ -249,11 +287,13 @@ export default function Home() {
                 { name: 'Docker', category: 'Deployment' },
                 { name: 'OpenCV', category: 'Video Processing' },
                 { name: 'Transformers', category: 'NLP' }
-              ].map(({ name, category }) => (
-                <div key={name} className="card p-5 rounded-xl text-center">
-                  <div className="text-white font-semibold mb-1">{name}</div>
-                  <div className="text-xs text-zinc-500">{category}</div>
-                </div>
+              ].map(({ name, category }, i) => (
+                <FadeIn key={name} delay={0.05 * i}>
+                  <div className="card p-5 rounded-xl text-center h-full">
+                    <div className="text-white font-semibold mb-1">{name}</div>
+                    <div className="text-xs text-zinc-500">{category}</div>
+                  </div>
+                </FadeIn>
               ))}
             </div>
           </div>
@@ -262,11 +302,11 @@ export default function Home() {
         {/* ── Why CaptionForge ── */}
         <section className="py-20 px-4">
           <div className="max-w-6xl mx-auto">
-            <div className="text-center mb-16">
+            <FadeIn className="text-center mb-16">
               <h2 className="text-4xl md:text-5xl font-bold font-display mb-4">
                 Why <span className="hero-title">CaptionForge</span>
               </h2>
-            </div>
+            </FadeIn>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
               {[
@@ -274,8 +314,8 @@ export default function Home() {
                 { title: 'Style Mastery', desc: 'Four specialized transformers trained for distinct tones: Formal, Sarcastic, and two flavors of Humorous.' },
                 { title: 'Temporal Understanding', desc: 'Unlike frame-by-frame captioning, we reason across scenes to build coherent narratives.' },
                 { title: 'Production Ready', desc: 'Docker-native deployment, modular architecture, and comprehensive testing for real-world reliability.' }
-              ].map(({ title, desc }) => (
-                <div key={title} className="flex gap-4">
+              ].map(({ title, desc }, i) => (
+                <FadeIn key={title} delay={0.1 * i} className="flex gap-4">
                   <div className="flex-shrink-0">
                     <CheckCircle2 className="h-6 w-6 text-ai-gold mt-1" />
                   </div>
@@ -283,7 +323,7 @@ export default function Home() {
                     <h3 className="text-lg font-bold text-white mb-2">{title}</h3>
                     <p className="text-sm text-zinc-400 leading-relaxed">{desc}</p>
                   </div>
-                </div>
+                </FadeIn>
               ))}
             </div>
           </div>
@@ -292,7 +332,7 @@ export default function Home() {
         {/* ── CTA Section ── */}
         <section className="py-20 px-4">
           <div className="max-w-4xl mx-auto text-center">
-            <div className="card p-12 rounded-3xl">
+            <FadeIn className="p-12 rounded-3xl">
               <h2 className="text-4xl md:text-5xl font-bold font-display mb-6">
                 Ready to Transform Your Videos?
               </h2>
@@ -312,7 +352,7 @@ export default function Home() {
                 <span className="relative">Start Captioning Now</span>
                 <ChevronRight className="relative h-5 w-5 group-hover:translate-x-1 transition-transform duration-150" />
               </button>
-            </div>
+            </FadeIn>
           </div>
         </section>
 
