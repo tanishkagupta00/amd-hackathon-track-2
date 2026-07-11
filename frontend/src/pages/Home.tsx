@@ -204,11 +204,11 @@ export default function Home() {
               <div className="absolute inset-0 pointer-events-auto">
                 <FlyingPosters 
                   items={[
-                    'https://images.unsplash.com/photo-1620712943543-bcc4688e7485?q=80&w=800&auto=format&fit=crop',
-                    'https://images.unsplash.com/photo-1677442136019-21780ecad995?q=80&w=800&auto=format&fit=crop',
-                    'https://images.unsplash.com/photo-1633412802994-5c058f151b66?q=80&w=800&auto=format&fit=crop',
-                    'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?q=80&w=800&auto=format&fit=crop',
-                    'https://images.unsplash.com/photo-1611162617474-5b21e879e113?q=80&w=800&auto=format&fit=crop'
+                    'https://picsum.photos/600/800?random=1',
+                    'https://picsum.photos/600/800?random=2',
+                    'https://picsum.photos/600/800?random=3',
+                    'https://picsum.photos/600/800?random=4',
+                    'https://picsum.photos/600/800?random=5'
                   ]}
                   planeWidth={280}
                   planeHeight={360}
