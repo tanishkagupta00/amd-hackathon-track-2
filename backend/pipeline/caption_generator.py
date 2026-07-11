@@ -15,13 +15,16 @@ class CaptionGenerator:
         Creates a factual, non-stylized base caption summarizing the video timeline,
         by genuinely watching and listening to the video via Gemini Multimodal.
         """
-        from .vision_encoder import extract_visual_context
-        from .llm_service import LLMService
-
         # 1. ALWAYS run local AMD GPU visual extraction first
-        visual_context = extract_visual_context(video_path)
+        try:
+            from .vision_encoder import extract_visual_context
+            visual_context = extract_visual_context(video_path)
+        except Exception as e:
+            print(f"Skipping local AMD vision extraction (not available in this environment): {e}")
+            visual_context = "Local vision extraction skipped."
 
         if not self.client:
+            from .llm_service import LLMService
             llm = LLMService()
             return llm.generate_text("You are a factual video captioner.", f"Based on this visual context extracted locally: '{visual_context}', generate a factual 2-sentence description of what might be happening.")
         
@@ -67,6 +70,7 @@ Generate a factual description including:
         except Exception as e:
             # 3. Graceful Fallback: If Video API fails, use the local context with the text LLM
             print(f"Gemini Video API failed ({e}). Falling back to local AMD visual context and LLMService.")
+            from .llm_service import LLMService
             llm = LLMService()
             fallback_prompt = (
                 f"Video processing failed, but we extracted this visual context locally using an AMD GPU: '{visual_context}'. "

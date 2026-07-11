@@ -291,14 +291,14 @@ export default function Home() {
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
               {[
-                { name: 'GPT-4 Vision', category: 'Vision Engine' },
-                { name: 'LLaMA 3', category: 'Reasoning' },
-                { name: 'FastAPI', category: 'Backend' },
-                { name: 'React', category: 'Frontend' },
+                { name: 'Gemini 2.5 Flash', category: 'Vision Engine' },
+                { name: 'Llama 3.3', category: 'Style Engine' },
+                { name: 'FastAPI', category: 'Backend API' },
+                { name: 'React & Vite', category: 'Frontend App' },
                 { name: 'PyTorch', category: 'ML Framework' },
-                { name: 'Docker', category: 'Deployment' },
+                { name: 'Vercel Serverless', category: 'Deployment' },
                 { name: 'OpenCV', category: 'Video Processing' },
-                { name: 'Transformers', category: 'NLP' }
+                { name: 'SQLite', category: 'Database' }
               ].map(({ name, category }, i) => (
                 <FadeIn key={name} delay={0.05 * i}>
                   <div className="card p-5 rounded-xl text-center h-full">
