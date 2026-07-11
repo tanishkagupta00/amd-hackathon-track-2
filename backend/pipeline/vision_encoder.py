@@ -1,15 +1,16 @@
-import logging
+import torch
+import open_clip
 
-logger = logging.getLogger("captionforge.vision_encoder")
+device = "cuda" if torch.cuda.is_available() else "cpu"
 
-class VisionEncoder:
-    def __init__(self):
-        pass
+print(f"Running on: {device}")
 
-    def encode(self, video_path: str):
-        """
-        Extracts visual features or keyframes from a video.
-        """
-        logger.info(f"Encoding vision features for {video_path}")
-        # Implementation to be added
-        pass
+model, _, preprocess = open_clip.create_model_and_transforms(
+    "ViT-B-32",
+    pretrained="laion2b_s34b_b79k"
+)
+
+model = model.to(device)
+model.eval()
+
+print("OpenCLIP loaded successfully!")
