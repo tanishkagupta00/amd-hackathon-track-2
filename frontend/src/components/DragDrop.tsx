@@ -165,24 +165,61 @@ export default function DragDrop({ onUploadSuccess }: DragDropProps) {
     const formData = new FormData();
     formData.append('file', file);
     try {
-      // Upload to tmpfiles.org to get a temporary public URL.
-      // We do NOT call /api/v1/videos/url afterwards — that route downloads the file
-      // into the backend's ephemeral /tmp which is discarded on Vercel anyway.
-      // Instead we generate a client-side UUID and pass the tmpfiles URL directly
-      // to /captions/generate, which downloads the video fresh inside that request.
-      const tmpResponse = await axios.post('https://tmpfiles.org/api/v1/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      // ── Temporary hosting strategy ────────────────────────────────────────
+      // tmpfiles.org's /dl/ URL serves an HTML page with a download button,
+      // NOT raw bytes. The backend's requests.get() always gets HTML → error.
+      //
+      // tempfile.org returns a real direct-download URL: /{fileId}/download
+      // that serves raw video bytes with correct Content-Type — works server-side.
+      //
+      // Fallback: 0x0.st — accepts curl-style POST, returns a plain URL that
+      // serves raw bytes directly, no HTML wrapper at all.
+      // ──────────────────────────────────────────────────────────────────────
 
-      const tmpUrl = tmpResponse.data?.data?.url;
-      if (!tmpUrl) throw new Error('tmpfiles.org did not return a URL. Please try again.');
+      let directUrl = '';
 
-      // Convert page URL → direct download URL
-      const directUrl = tmpUrl.replace('tmpfiles.org/', 'tmpfiles.org/dl/');
+      // ── Primary: tempfile.org ─────────────────────────────────────────────
+      try {
+        const tmpForm = new FormData();
+        tmpForm.append('files', file);          // field name is 'files' (plural)
+        tmpForm.append('expiryHours', '24');
 
-      // Generate a local video_id — no backend DB write needed
+        const res = await axios.post('https://tempfile.org/api/upload/local', tmpForm, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+          timeout: 60000,
+        });
+
+        const fileId = res.data?.files?.[0]?.id;
+        if (!fileId) throw new Error('tempfile.org did not return a file ID.');
+
+        // /{fileId}/download → serves raw bytes, no HTML, no redirect tricks
+        directUrl = `https://tempfile.org/${fileId}/download`;
+
+      } catch (primaryErr: any) {
+        // ── Fallback: 0x0.st ─────────────────────────────────────────────────
+        console.warn('tempfile.org failed, trying 0x0.st fallback:', primaryErr.message);
+
+        const fallbackForm = new FormData();
+        fallbackForm.append('file', file);
+
+        const fallbackRes = await axios.post('https://0x0.st', fallbackForm, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+          timeout: 60000,
+        });
+
+        // 0x0.st returns a plain text URL like: https://0x0.st/iABC.mp4
+        const fallbackUrl = typeof fallbackRes.data === 'string'
+          ? fallbackRes.data.trim()
+          : null;
+
+        if (!fallbackUrl || !fallbackUrl.startsWith('http')) {
+          throw new Error('Both tempfile.org and 0x0.st failed to upload the video. Please try again.');
+        }
+        directUrl = fallbackUrl;
+      }
+
+      // Generate a client-side UUID — no backend DB write needed
       const videoId = crypto.randomUUID();
-
       onUploadSuccess(videoId, file.name, directUrl);
     } catch (err: any) {
       if (err.response?.status === 413) {
