@@ -24,12 +24,12 @@ const STATUS_LABEL: Record<string, string> = {
   failed:       'Failed — check execution log for details',
 };
 
-/* Waveform bar — energetic cyan/indigo when active */
+/* Waveform bar — energetic gold when active */
 function WaveformBar({ delay, active }: { delay: number; active: boolean }) {
   return (
     <span
       className={`inline-block w-[3px] rounded-full transition-colors duration-300 ${
-        active ? 'bg-ai-cyan' : 'bg-zinc-800'
+        active ? 'bg-ai-gold' : 'bg-zinc-800'
       }`}
       style={{
         height: active ? undefined : '8px',
@@ -96,14 +96,14 @@ export default function Monitor({ videoId, onProcessingComplete }: MonitorProps)
         <div className="flex items-start justify-between gap-4 border-b border-zinc-800/70 pb-5">
           <div>
             <h3 className="text-sm font-bold text-white font-display flex items-center gap-2">
-              <Cpu className="h-4 w-4 text-ai-indigo shrink-0" />
+              <Cpu className="h-4 w-4 text-ai-gold shrink-0" />
               AI Orchestration Pipeline
             </h3>
             {/* Real status text from API */}
             <p className={`text-xs mt-1.5 font-mono transition-colors duration-300 ${
               isFailed               ? 'text-rose-400' :
               status === 'completed' ? 'text-ai-emerald' :
-              'text-ai-cyan'
+              'text-ai-goldLight'
             }`}>
               {STATUS_LABEL[status] ?? status}
             </p>
@@ -134,7 +134,7 @@ export default function Monitor({ videoId, onProcessingComplete }: MonitorProps)
                   {/* Connector fill — gradient fill! */}
                   {idx > 0 && stageIsCompleted && (
                     <div
-                      className="absolute h-px bg-gradient-to-r from-ai-indigo to-ai-cyan connector-fill"
+                      className="absolute h-px bg-gradient-to-r from-ai-goldDark to-ai-goldLight connector-fill"
                       style={{
                         top: '18px',
                         left:  `calc(${(idx - 1) * 25 + 12.5}% + 24px)`,
@@ -148,14 +148,14 @@ export default function Monitor({ videoId, onProcessingComplete }: MonitorProps)
                     'relative z-10 h-9 w-9 rounded-full flex items-center justify-center',
                     'border-2 text-xs font-bold transition-all duration-300',
                     stageIsCompleted
-                      ? 'bg-ai-indigo border-ai-indigo text-white shadow-[0_0_14px_rgba(99,102,241,0.5)]'
+                      ? 'bg-ai-gold border-ai-gold text-obsidian shadow-[0_0_14px_rgba(212,175,55,0.5)]'
                       : isActive
-                      ? 'bg-obsidian border-ai-cyan text-ai-cyan shadow-[0_0_14px_rgba(34,211,238,0.35)] animate-pulse'
+                      ? 'bg-obsidian border-ai-gold text-ai-gold shadow-[0_0_14px_rgba(212,175,55,0.35)] animate-pulse'
                       : isStageFail
                       ? 'bg-rose-950 border-rose-600 text-rose-400'
                       : 'bg-obsidian border-zinc-800 text-zinc-500',
                   ].join(' ')}>
-                    {stageIsCompleted  ? <CheckCircle2 className="h-4 w-4 check-in" /> :
+                    {stageIsCompleted  ? <CheckCircle2 className="h-4 w-4 check-in text-obsidian" /> :
                      isStageFail       ? <XCircle className="h-4 w-4" /> :
                      idx + 1}
                   </div>
@@ -163,7 +163,7 @@ export default function Monitor({ videoId, onProcessingComplete }: MonitorProps)
                   {/* Label */}
                   <div>
                     <p className={`text-[11px] font-bold font-display uppercase tracking-widest transition-colors duration-300 ${
-                      isActive         ? 'text-ai-cyan' :
+                      isActive         ? 'text-ai-goldLight' :
                       stageIsCompleted ? 'text-white' :
                       isStageFail      ? 'text-rose-400' :
                       'text-zinc-500'
@@ -184,7 +184,7 @@ export default function Monitor({ videoId, onProcessingComplete }: MonitorProps)
         <div className="w-[40%] min-w-[280px] border-r border-zinc-800/80 bg-gradient-to-b from-zinc-900/40 to-transparent flex flex-col items-center justify-center p-6 relative">
           
           <div className="absolute top-5 left-5 flex items-center gap-2.5">
-            <span className={`h-2.5 w-2.5 rounded-full ${isRunning ? 'bg-ai-cyan animate-pulse' : isCompleted ? 'bg-ai-emerald' : 'bg-rose-500'}`} />
+            <span className={`h-2.5 w-2.5 rounded-full ${isRunning ? 'bg-ai-gold animate-pulse' : isCompleted ? 'bg-ai-emerald' : 'bg-rose-500'}`} />
             <span className="text-[10px] font-mono text-zinc-400 font-bold uppercase tracking-widest">
               {isRunning ? 'Synthesizing...' : isCompleted ? 'System Idle' : 'Error'}
             </span>
@@ -192,7 +192,7 @@ export default function Monitor({ videoId, onProcessingComplete }: MonitorProps)
           
           <div className="h-44 w-44 relative mt-4">
             <ParticleOrb 
-              hue={isRunning ? 200 : isCompleted ? 140 : 0} 
+              hue={isRunning ? 45 : isCompleted ? 140 : 0} 
               hoverIntensity={0.5} 
               rotateOnHover={true} 
               forceHoverState={isRunning} 
@@ -200,7 +200,7 @@ export default function Monitor({ videoId, onProcessingComplete }: MonitorProps)
             />
             {isRunning && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <Loader2 className="h-8 w-8 text-ai-cyan/50 animate-spin" />
+                <Loader2 className="h-8 w-8 text-ai-gold/50 animate-spin" />
               </div>
             )}
           </div>
@@ -219,12 +219,12 @@ export default function Monitor({ videoId, onProcessingComplete }: MonitorProps)
               <span className="h-2.5 w-2.5 rounded-full bg-ai-emerald/30" />
             </div>
             <div className="flex items-center gap-2 ml-3 text-zinc-500 text-xs font-mono">
-              <Terminal className="h-3.5 w-3.5 text-ai-indigo" />
+              <Terminal className="h-3.5 w-3.5 text-ai-gold" />
               <span>execution_log.sh &nbsp;·&nbsp; {videoId.substring(0,8)}</span>
             </div>
             {isRunning && (
-              <span className="ml-auto flex items-center gap-1.5 text-[10px] font-mono text-ai-indigo">
-                <span className="h-1.5 w-1.5 rounded-full bg-ai-indigo animate-pulse" />
+              <span className="ml-auto flex items-center gap-1.5 text-[10px] font-mono text-ai-gold">
+                <span className="h-1.5 w-1.5 rounded-full bg-ai-gold animate-pulse" />
                 LIVE
               </span>
             )}
@@ -244,7 +244,7 @@ export default function Monitor({ videoId, onProcessingComplete }: MonitorProps)
                   isError ? 'text-rose-400 font-medium' :
                   isDone  ? 'text-white font-semibold' :   
                   isWarn  ? 'text-yellow-400' :
-                  isInfo  ? 'text-ai-cyan/90' :   
+                  isInfo  ? 'text-ai-goldLight/90' :   
                   'text-zinc-400'
                 }>{log}</div>
               );

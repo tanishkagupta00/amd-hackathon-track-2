@@ -2,18 +2,16 @@ import React, { useState, useRef, useEffect } from 'react';
 import { AlertCircle } from 'lucide-react';
 import axios from 'axios';
 
-/* ── All logic/props/API calls unchanged ── */
-
 interface DragDropProps {
   onUploadSuccess: (videoId: string, filename: string) => void;
 }
 
 function VideoStripIllustration({ active }: { active: boolean }) {
-  // Colours mapped to new tokens: ai-indigo (#6366f1) active, zinc-700 (#3F3F46) inactive
-  const accentFill  = active ? '#6366f1' : '#3F3F46';
-  const frameFill   = active ? 'rgba(99,102,241,0.1)' : 'rgba(24,24,27,0.5)';
-  const frameStroke = active ? '#6366f1' : '#27272A';
-  const playFill    = active ? '#22d3ee' : '#A1A1AA'; // ai-cyan active, zinc-400 inactive
+  // Colours mapped to new tokens: ai-gold (#D4AF37) active, zinc-700 (#3F3F46) inactive
+  const accentFill  = active ? '#D4AF37' : '#3F3F46';
+  const frameFill   = active ? 'rgba(212,175,55,0.1)' : 'rgba(24,24,27,0.5)';
+  const frameStroke = active ? '#D4AF37' : '#27272A';
+  const playFill    = active ? '#E6C75C' : '#A1A1AA';
 
   return (
     <svg
@@ -34,9 +32,9 @@ function VideoStripIllustration({ active }: { active: boolean }) {
       <path d="M34 26 L34 38 L46 32 Z" fill={playFill} className="transition-colors duration-300" />
       {/* Waveform bars */}
       {[
-        [17,52,6,'#6366f1'], [22,49,9,'#6366f1'], [27,51,7,'#22d3ee'],
-        [32,48,10,'#22d3ee'],[37,50,8,'#6366f1'], [42,52,6,'#6366f1'],
-        [47,49,9,'#22d3ee'], [52,51,7,'#6366f1'], [57,48,10,'#22d3ee'],
+        [17,52,6,'#D4AF37'], [22,49,9,'#D4AF37'], [27,51,7,'#E6C75C'],
+        [32,48,10,'#E6C75C'],[37,50,8,'#D4AF37'], [42,52,6,'#D4AF37'],
+        [47,49,9,'#E6C75C'], [52,51,7,'#D4AF37'], [57,48,10,'#E6C75C'],
       ].map(([x, y, h, c], i) => (
         <rect key={i}
           x={x} y={y} width="3" height={h} rx="1"
@@ -92,9 +90,9 @@ function FilePreviewCard({ file, uploading }: { file: File; uploading: boolean }
         <div className="absolute bottom-3 left-4">
           {uploading ? (
             <span className="flex items-center gap-1.5 text-xs font-mono font-semibold
-              text-ai-cyan bg-zinc-950/80 border border-ai-cyan/30
+              text-ai-goldLight bg-zinc-950/80 border border-ai-gold/30
               px-2.5 py-1 rounded-full backdrop-blur-sm">
-              <span className="h-1.5 w-1.5 rounded-full bg-ai-cyan animate-pulse" />
+              <span className="h-1.5 w-1.5 rounded-full bg-ai-gold animate-pulse" />
               Uploading…
             </span>
           ) : (
@@ -120,7 +118,7 @@ function FilePreviewCard({ file, uploading }: { file: File; uploading: boolean }
           </div>
         </div>
         {uploading && (
-          <div className="shrink-0 h-5 w-5 rounded-full border-2 border-ai-cyan border-t-transparent animate-spin" />
+          <div className="shrink-0 h-5 w-5 rounded-full border-2 border-ai-gold border-t-transparent animate-spin" />
         )}
       </div>
     </div>
@@ -212,12 +210,14 @@ export default function DragDrop({ onUploadSuccess }: DragDropProps) {
       ) : (
         <div
           className={[
-            'relative border border-dashed rounded-2xl p-14 text-center transition-all duration-200 glass cursor-pointer select-none',
+            'relative rounded-2xl p-14 text-center cursor-pointer select-none',
+            'transition-all duration-300 backdrop-blur-[15px]',
             dragActive
-              ? 'border-ai-indigo/70 bg-ai-indigo/10 drag-glow'         // indigo glow on drag
-              : 'border-zinc-800 hover:border-zinc-600 bg-zinc-900/40',
+              ? 'border-ai-gold bg-gradient-to-b from-white/5 to-white/5 shadow-[0_0_50px_rgba(212,175,55,0.15)]' // gold glow on drag
+              : 'border-ai-gold/15 bg-gradient-to-b from-white/2 to-white/1',
             morphing ? 'morph-out' : 'morph-in',
           ].join(' ')}
+          style={{ border: dragActive ? '1px solid #D4AF37' : '1px solid rgba(212,175,55,0.15)' }}
           onDragEnter={handleDrag} onDragOver={handleDrag}
           onDragLeave={handleDrag} onDrop={handleDrop}
           onClick={onButtonClick}
@@ -240,10 +240,10 @@ export default function DragDrop({ onUploadSuccess }: DragDropProps) {
             <button
               type="button"
               className="pointer-events-auto mt-2 px-6 py-2.5 rounded-xl text-sm font-semibold
-                bg-zinc-800 hover:bg-zinc-700 text-white
-                border border-zinc-700 hover:border-zinc-500
+                bg-transparent text-ai-accent
+                border border-ai-gold/40 hover:bg-ai-gold/10
                 transition-all duration-200
-                focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ai-indigo/50"
+                focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ai-gold/50"
               onClick={(e) => { e.stopPropagation(); onButtonClick(); }}
             >
               Browse local files

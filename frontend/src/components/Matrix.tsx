@@ -48,8 +48,8 @@ const STYLE_META = {
     title: 'Humorous · Tech',
     desc: 'Coding, hardware, and workflow metaphors.',
     Icon: Terminal,
-    hoverRing: 'focus-visible:ring-ai-cyan/40 hover:border-ai-cyan/50',
-    iconColor: 'text-ai-cyan',
+    hoverRing: 'focus-visible:ring-ai-gold/40 hover:border-ai-gold/50',
+    iconColor: 'text-ai-gold',
   },
   "humorous-non-tech": {
     title: 'Humorous · Non-Tech',
@@ -69,7 +69,7 @@ function ScoreBar({ label, value, highlight }: { label: string; value: number; h
         <div className="h-1 w-16 bg-zinc-800 rounded-full overflow-hidden">
           <div
             className={`h-full rounded-full transition-all duration-500 ${
-              highlight ? 'bg-gradient-to-r from-ai-indigo to-ai-cyan' : 'bg-zinc-600'
+              highlight ? 'bg-gradient-to-r from-ai-goldDark to-ai-goldLight' : 'bg-zinc-600'
             }`}
             style={{ width: `${Math.round(value * 100)}%` }}
           />
@@ -116,14 +116,14 @@ export default function Matrix({ videoId, captions, evaluations, onReset }: Matr
           <p className="text-xs text-zinc-400 mt-0.5">4 styles · accuracy scores · side-by-side comparison</p>
         </div>
         <div className="flex gap-3 shrink-0">
-          {/* Primary action — Vibrant Indigo->Cyan gradient */}
+          {/* Primary action — Gold gradient */}
           <button
             onClick={handleDownloadJson}
             className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-xl
-              bg-gradient-to-r from-ai-indigo to-ai-cyan text-white
-              transition-all duration-200
-              shadow-[0_0_18px_rgba(34,211,238,0.25)] hover:shadow-[0_0_24px_rgba(34,211,238,0.4)]
-              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ai-cyan focus-visible:ring-offset-2 focus-visible:ring-offset-obsidian"
+              bg-gradient-to-br from-ai-goldDark via-ai-gold to-ai-goldLight text-obsidian
+              transition-all duration-300
+              shadow-[0_0_18px_rgba(212,175,55,0.25)] hover:-translate-y-0.5 hover:shadow-[0_0_24px_rgba(212,175,55,0.4)]
+              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ai-gold focus-visible:ring-offset-2 focus-visible:ring-offset-obsidian"
           >
             <Download className="h-4 w-4" />
             Download JSON
@@ -132,10 +132,10 @@ export default function Matrix({ videoId, captions, evaluations, onReset }: Matr
           <button
             onClick={onReset}
             className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-xl
-              bg-zinc-800 hover:bg-zinc-700 text-white
-              border border-zinc-700 hover:border-zinc-500
+              bg-transparent text-ai-accent
+              border border-ai-gold/40 hover:bg-ai-gold/10
               transition-all duration-200
-              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 focus-visible:ring-offset-2 focus-visible:ring-offset-obsidian"
+              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ai-gold focus-visible:ring-offset-2 focus-visible:ring-offset-obsidian"
           >
             <RefreshCw className="h-4 w-4" />
             New Video
@@ -190,10 +190,10 @@ export default function Matrix({ videoId, captions, evaluations, onReset }: Matr
                     border border-zinc-700 hover:border-zinc-500
                     text-zinc-400 hover:text-white
                     transition-all duration-150
-                    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ai-cyan/40"
+                    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ai-gold/40"
                 >
                   {copiedStyle === styleKey
-                    ? <Check className="h-4 w-4 text-ai-cyan check-in" />
+                    ? <Check className="h-4 w-4 text-ai-gold check-in" />
                     : <Copy className="h-4 w-4" />
                   }
                 </button>

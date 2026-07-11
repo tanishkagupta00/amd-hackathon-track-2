@@ -23,20 +23,23 @@ export default {
         steel: { 600: '#5a6478', 300: '#9aa3b5' },
         gold: { 400: '#D4AF6A', 300: '#E0C48A', 100: '#F0DFB5' },
         ivory: { 50: '#F7F3EA' },
-        // ── NEW PALETTE (Hyper-Modern AI) ──
-        obsidian: '#09090B',   // Deep, punchy dark background
+        // ✨ NEW PALETTE (Premium Black/Gold/White) ✨
+        obsidian: '#070707',   // Deep, punchy dark background
         zinc: {
-          950: '#09090B',
-          900: '#18181B',      // Base card surface
-          800: '#27272A',      // Elevated surface / border
+          950: '#070707',
+          900: '#111111',      // Base card surface (dark charcoal)
+          800: '#1C1C1C',      // Elevated surface / border
           700: '#3F3F46',      // Stronger border
-          400: '#A1A1AA',      // Secondary text
+          400: '#9E9E9E',      // Muted text
         },
         ai: {
-          indigo: '#6366f1',   // Primary accent 1
-          cyan: '#22d3ee',     // Primary accent 2
-          emerald: '#10B981',  // Success
-          rose: '#F43F5E',     // Error
+          gold: '#D4AF37',       // Primary gold
+          goldLight: '#E6C75C',  // Hover / bright
+          goldDark: '#B8860B',   // Deep gold
+          accent: '#F5E6A1',     // Soft accent text
+          emerald: '#3DDC84',    // Success
+          warning: '#FFB547',    // Warning
+          rose: '#FF5C5C',       // Error (danger)
         }
       },
       fontFamily: {

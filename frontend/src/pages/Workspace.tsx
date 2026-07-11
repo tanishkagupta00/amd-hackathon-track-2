@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, Home as HomeIcon } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 import DragDrop from '../components/DragDrop';
@@ -7,6 +8,7 @@ import Monitor from '../components/Monitor';
 import Matrix from '../components/Matrix';
 
 export default function Workspace() {
+  const navigate = useNavigate();
   const [videoId, setVideoId] = useState<string | null>(null);
   const [filename, setFilename] = useState<string>('');
   const [stage, setStage] = useState<'upload' | 'processing' | 'completed'>('upload');
@@ -39,21 +41,30 @@ export default function Workspace() {
   };
 
   return (
-    <div className="min-h-screen bg-obsidian flex flex-col selection:bg-ai-indigo/30">
+    <div className="min-h-screen bg-obsidian flex flex-col selection:bg-ai-gold/30">
       {/* Premium Header */}
-      <header className="sticky top-0 z-40 bg-obsidian/80 backdrop-blur-md text-white border-b border-zinc-800">
+      <header className="sticky top-0 z-40 bg-obsidian/80 backdrop-blur-[18px] text-white border-b border-white/5">
         <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-1.5 bg-gradient-to-tr from-ai-indigo to-ai-cyan rounded-lg shadow-lg shadow-ai-indigo/20">
-              <Sparkles className="h-4 w-4 text-white" />
+            <div className="p-1.5 bg-gradient-to-tr from-ai-goldDark to-ai-gold rounded-lg shadow-[0_0_20px_rgba(212,175,55,0.18)]">
+              <Sparkles className="h-4 w-4 text-obsidian" />
             </div>
             <div>
-              <span className="font-bold tracking-tight text-sm font-display">CaptionForge AI</span>
-              <span className="ml-2 px-2 py-0.5 text-[9px] font-bold bg-ai-indigo/10 text-ai-indigo rounded border border-ai-indigo/20 uppercase tracking-widest">AMD Track 2</span>
+              <span className="font-bold tracking-tight text-sm font-display text-white">CaptionForge AI</span>
+              <span className="ml-2 px-2 py-0.5 text-[9px] font-bold bg-ai-gold/10 text-ai-goldLight rounded border border-ai-gold/20 uppercase tracking-widest">AMD Track 2</span>
             </div>
           </div>
-          <div className="flex items-center gap-4 text-xs text-zinc-500 font-medium">
-            <span>Pipeline Agent</span>
+          <div className="flex items-center gap-4 text-xs font-medium">
+            <button 
+              onClick={() => navigate('/')}
+              className="flex items-center gap-1.5 text-zinc-400 hover:text-ai-goldLight transition-colors
+                focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ai-gold/40 rounded px-1.5 py-1"
+            >
+              <HomeIcon className="h-3.5 w-3.5" />
+              <span>Home</span>
+            </button>
+            <span className="text-zinc-600">|</span>
+            <span className="text-zinc-500">Pipeline Agent</span>
           </div>
         </div>
       </header>
@@ -63,7 +74,7 @@ export default function Workspace() {
         {/* Intro */}
         {stage === 'upload' && (
           <div className="space-y-3 animate-fade-in">
-            <h1 className="text-3xl font-bold tracking-tight text-white font-display">
+            <h1 className="text-3xl font-bold tracking-tight font-display hero-title w-fit">
               Transform Videos with Style-Aware Captions
             </h1>
             <p className="text-zinc-400 max-w-xl text-sm leading-relaxed">
@@ -73,7 +84,7 @@ export default function Workspace() {
         )}
 
         {stage !== 'upload' && filename && (
-          <div className="flex items-center gap-2 text-xs font-semibold text-zinc-400 uppercase tracking-wider bg-zinc-900 px-3 py-1.5 rounded-lg w-max border border-zinc-800 shadow-inner">
+          <div className="flex items-center gap-2 text-xs font-semibold text-ai-accent uppercase tracking-wider bg-zinc-900 px-3 py-1.5 rounded-lg w-max border border-zinc-800 shadow-inner">
             <span>Active File:</span>
             <span className="text-white normal-case font-mono">{filename}</span>
           </div>
@@ -102,7 +113,7 @@ export default function Workspace() {
       </main>
 
       {/* Sticky footer */}
-      <footer className="border-t border-zinc-800 py-6 text-center text-xs text-zinc-500">
+      <footer className="border-t border-white/5 py-6 text-center text-xs text-zinc-500">
         <p>&copy; 2026 CaptionForge AI &nbsp;·&nbsp; AMD Developer Hackathon Track 2</p>
       </footer>
     </div>
