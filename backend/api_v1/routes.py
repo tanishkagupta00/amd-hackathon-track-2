@@ -159,7 +159,16 @@ def generate_captions(
     from database import SessionLocal
     run_pipeline_job(req.video_id, video_path, SessionLocal)
 
-    return {"status": "completed", "video_id": req.video_id}
+    db.refresh(record)
+    if record.status == "failed":
+        raise HTTPException(status_code=500, detail="Pipeline execution failed.")
+
+    return {
+        "status": "completed", 
+        "video_id": req.video_id,
+        "captions": record.get_captions(),
+        "evaluations": record.get_evaluations()
+    }
 
 @router.get("/captions/{id}")
 def get_captions(id: str, db: Session = Depends(get_db)):

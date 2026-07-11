@@ -5,7 +5,7 @@ import ParticleOrb from './ParticleOrb';
 
 interface MonitorProps {
   videoId: string;
-  onProcessingComplete: (videoId: string) => void;
+  onProcessingComplete: (videoId: string, captions?: any, evaluations?: any) => void;
 }
 
 const STAGES = [
@@ -49,11 +49,17 @@ export default function Monitor({ videoId, onProcessingComplete }: MonitorProps)
   useEffect(() => {
     // 1. Initiate blocking synchronous request to the Vercel Serverless Function
     axios.post('/api/v1/captions/generate', { video_id: videoId })
-      .then(() => {
+      .then((res) => {
         // Automatically jump to completed when the synchronous API returns
         setStatus('completed');
         setLogs(prev => [...prev, '[INFO] Caption generation finished successfully.']);
-        onProcessingComplete(videoId);
+        
+        // Pass the result directly to avoid the separate GET request which fails on Vercel's ephemeral FS
+        if (res.data && res.data.captions && res.data.evaluations) {
+          onProcessingComplete(videoId, res.data.captions, res.data.evaluations);
+        } else {
+          onProcessingComplete(videoId); // Fallback
+        }
       })
       .catch(err => setLogs(prev => [...prev, `[ERROR] Failed to start generation: ${err.message}`]));
 

@@ -21,7 +21,16 @@ export default function Workspace() {
     setStage('processing');
   };
 
-  const handleProcessingComplete = async (id: string) => {
+  const handleProcessingComplete = async (id: string, directCaptions?: any, directEvals?: any) => {
+    // If the POST request returned the data directly, use it to avoid Vercel ephemeral DB read failure
+    if (directCaptions && directEvals && Object.keys(directCaptions).length > 0) {
+      setCaptions(directCaptions);
+      setEvaluations(directEvals);
+      setStage('completed');
+      return;
+    }
+    
+    // Fallback logic
     try {
       const res = await axios.get(`/api/v1/captions/${id}`);
       setCaptions(res.data.captions);
