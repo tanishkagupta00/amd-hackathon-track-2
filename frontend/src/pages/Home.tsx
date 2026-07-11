@@ -19,8 +19,7 @@ export default function Home() {
       <div className="relative z-10">
 
         {/* ── Navbar ── */}
-        <nav className="w-full flex items-center justify-between px-6 sm:px-8 py-5 max-w-7xl mx-auto sticky top-0 z-50
-          bg-obsidian/75 backdrop-blur-[18px] border-b border-white/5">
+        <nav className="w-full flex items-center justify-between px-6 sm:px-8 py-5 max-w-7xl mx-auto sticky top-0 z-50">
           <div className="flex items-center gap-3">
             {/* Logo — gold gradient */}
             <div className="p-1.5 bg-gradient-to-tr from-ai-goldDark to-ai-gold rounded-xl shadow-[0_0_20px_rgba(212,175,55,0.18)]">
