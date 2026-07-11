@@ -39,11 +39,12 @@ MIME_MAP = {
 # Formats that Gemini natively handles reliably without re-encoding
 GEMINI_NATIVE = {".mp4", ".mov", ".avi", ".webm", ".3gp", ".mpg", ".mpeg", ".m4v"}
 
-# Model cascade: try each in order when quota is exhausted
+# Model cascade: try each in order when quota or model not available
 GEMINI_MODELS = [
-    "gemini-2.5-flash",
-    "gemini-1.5-flash",
-    "gemini-1.5-flash-8b",
+    "gemini-2.0-flash",       # primary — available to all API key types
+    "gemini-2.0-flash-lite",  # lighter fallback
+    "gemini-1.5-flash",       # stable fallback
+    "gemini-1.5-flash-8b",    # last resort
 ]
 
 
@@ -340,8 +341,10 @@ class CaptionGenerator:
                     return caption
                 except Exception as me:
                     err_str = str(me)
-                    if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "quota" in err_str.lower():
-                        logger.warning(f"[{model}] Quota exhausted, trying next model...")
+                    is_quota = "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "quota" in err_str.lower()
+                    is_unavailable = "404" in err_str or "NOT_FOUND" in err_str or "no longer available" in err_str.lower()
+                    if is_quota or is_unavailable:
+                        logger.warning(f"[{model}] {'Quota exhausted' if is_quota else 'Model unavailable'}, trying next model...")
                         last_model_error = me
                         continue
                     # Non-quota error — bubble up immediately
