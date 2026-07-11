@@ -105,10 +105,22 @@ export default function Home() {
 
             {/* H1 */}
             <h1 className="text-5xl md:text-7xl font-bold tracking-tight leading-[1.08] font-display">
-              <Shuffle text="Intelligent Video Captions," className="inline-block" />{' '}
+              <Shuffle 
+                text="Intelligent Video Captions," 
+                className="inline-block" 
+                duration={1.2}
+                stagger={0.06}
+                ease="power3.out"
+              />{' '}
               <br className="hidden md:block" />
-              <span className="hero-title">
-                Generated with Style.
+              <span className="hero-title inline-block">
+                <Shuffle 
+                  text="Generated with Style." 
+                  className="inline-block" 
+                  duration={1.5}
+                  stagger={0.08}
+                  ease="power3.out"
+                />
               </span>
             </h1>
 
