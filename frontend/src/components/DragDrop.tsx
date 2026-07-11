@@ -142,14 +142,18 @@ export default function DragDrop({ onUploadSuccess }: DragDropProps) {
 
   const validateAndUpload = async (file: File) => {
     setError(null);
-    const ext = file.name.split('.').pop()?.toLowerCase();
-    if (!ext || !['mp4', 'mov', 'avi'].includes(ext)) {
-      setError('Invalid file format. Please upload an MP4, MOV, or AVI video.');
+
+    // Accept any file — backend will re-encode unsupported formats automatically.
+    // Only hard-block clearly non-video MIME types.
+    const isVideo = file.type.startsWith('video/') || file.name.match(/\.(mp4|mov|avi|webm|mkv|m4v|3gp|mpg|mpeg|flv|wmv|ts|mts|m2ts|ogv|divx|rm|rmvb|asf|vob|f4v)$/i);
+    if (!isVideo) {
+      setError('Please upload a video file.');
       return;
     }
-    if (file.size > 50 * 1024 * 1024) { 
-      setError('File size exceeds 50MB limit.'); 
-      return; 
+
+    if (file.size > 50 * 1024 * 1024) {
+      setError('File size exceeds 50MB limit.');
+      return;
     }
 
     setMorphing(true);
@@ -204,7 +208,7 @@ export default function DragDrop({ onUploadSuccess }: DragDropProps) {
 
   return (
     <div className="w-full animate-fade-in">
-      <input ref={inputRef} type="file" className="hidden" accept=".mp4,.mov,.avi" onChange={handleChange} />
+      <input ref={inputRef} type="file" className="hidden" accept="video/*" onChange={handleChange} />
 
       {selectedFile ? (
         <FilePreviewCard file={selectedFile} uploading={loading} />
@@ -233,7 +237,7 @@ export default function DragDrop({ onUploadSuccess }: DragDropProps) {
                 {dragActive ? 'Release to analyse' : 'Drop a video file to begin analysis'}
               </p>
               <p className="text-sm text-zinc-500">
-                MP4 &nbsp;·&nbsp; MOV &nbsp;·&nbsp; AVI &nbsp;·&nbsp; max 50 MB
+                MP4 · MOV · AVI · MKV · WebM · and more &nbsp;·&nbsp; max 50 MB
               </p>
             </div>
 

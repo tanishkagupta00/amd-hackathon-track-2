@@ -26,11 +26,10 @@ critic = CaptionCritic()
 
 @router.post("/videos", response_model=VideoUploadResponse)
 def upload_video(file: UploadFile = File(...), db: Session = Depends(get_db)):
-    # Validate file extension
-    ALLOWED = {".mp4", ".mov", ".avi", ".webm", ".mkv", ".m4v", ".3gp", ".mpeg", ".mpg"}
+    # Accept any extension — caption_generator will re-encode if Gemini rejects it
     ext = os.path.splitext(file.filename)[1].lower()
-    if ext not in ALLOWED:
-        raise HTTPException(status_code=400, detail=f"Unsupported video format '{ext}'. Please upload MP4, MOV, AVI, WebM, or MKV.")
+    if not ext:
+        ext = ".mp4"  # fallback if no extension provided
 
     video_id = str(uuid.uuid4())
     filename = f"{video_id}{ext}"
@@ -60,11 +59,10 @@ def upload_video(file: UploadFile = File(...), db: Session = Depends(get_db)):
 
 @router.post("/videos/url", response_model=VideoUploadResponse)
 def upload_video_from_url(req: VideoUrlUploadRequest, db: Session = Depends(get_db)):
-    # Validate file extension
-    ALLOWED = {".mp4", ".mov", ".avi", ".webm", ".mkv", ".m4v", ".3gp", ".mpeg", ".mpg"}
+    # Accept any extension — caption_generator will re-encode if Gemini rejects it
     ext = os.path.splitext(req.filename)[1].lower()
-    if ext not in ALLOWED:
-        raise HTTPException(status_code=400, detail=f"Unsupported video format '{ext}'. Please upload MP4, MOV, AVI, WebM, or MKV.")
+    if not ext:
+        ext = ".mp4"
 
     video_id = str(uuid.uuid4())
     filename = f"{video_id}{ext}"
@@ -79,10 +77,31 @@ def upload_video_from_url(req: VideoUrlUploadRequest, db: Session = Depends(get_
         try:
             with requests.get(req.url, stream=True, timeout=90, headers=headers, allow_redirects=True) as r:
                 r.raise_for_status()
+
+                # Guard: reject HTML error pages served as 200 OK (common with tmpfiles.org)
+                content_type = r.headers.get("Content-Type", "")
+                if "text/html" in content_type:
+                    raise Exception(
+                        f"tmpfiles.org returned an HTML page instead of the video file. "
+                        f"The temporary link may have expired. Please re-upload the video."
+                    )
+
                 with open(dest_path, "wb") as f:
                     for chunk in r.iter_content(chunk_size=65536):
                         if chunk:
                             f.write(chunk)
+
+            # Guard: verify we wrote a real video, not a 0-byte or tiny HTML blob
+            downloaded_size = os.path.getsize(dest_path)
+            logger.info(f"Downloaded video size: {downloaded_size / 1024:.1f} KB  path={dest_path}")
+            if downloaded_size < 10_000:  # less than 10 KB is definitely not a real video
+                os.remove(dest_path)
+                raise Exception(
+                    f"Downloaded file is only {downloaded_size} bytes — "
+                    f"the temporary link likely expired or returned an error page. "
+                    f"Please re-upload the video."
+                )
+
             last_error = None
             break  # success
         except Exception as e:
