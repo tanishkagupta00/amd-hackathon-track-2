@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Sparkles, Settings } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import axios from 'axios';
 
 import DragDrop from '../components/DragDrop';
@@ -54,11 +54,6 @@ export default function Workspace() {
           </div>
           <div className="flex items-center gap-4 text-xs text-zinc-500 font-medium">
             <span>Pipeline Agent</span>
-            <div className="h-3.5 w-px bg-zinc-800" />
-            <button className="hover:text-white transition flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ai-cyan/40 rounded-md px-1">
-              <Settings className="h-3.5 w-3.5" />
-              Settings
-            </button>
           </div>
         </div>
       </header>
