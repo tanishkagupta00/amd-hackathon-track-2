@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
 from core.config import settings
-from api.routes import router as api_router
+from api_v1.routes import router as api_router
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
