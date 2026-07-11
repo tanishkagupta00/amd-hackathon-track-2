@@ -376,7 +376,7 @@ export default function Home() {
                 <Sparkles className="h-4 w-4 text-obsidian" />
               </div>
               <span className="text-sm text-zinc-400">
-                © 2024 CaptionForge AI. Built for AMD Hackathon Track 2.
+                © {new Date().getFullYear()} CaptionForge AI. Built for AMD Hackathon Track 2.
               </span>
             </div>
             <div className="flex items-center gap-6">
