@@ -24,9 +24,9 @@ export default function TextGalaxy({
       newParticles.push({
         id: i,
         text: captions[i % captions.length],
-        x: (Math.random() - 0.5) * 5000,
-        y: (Math.random() - 0.5) * 4000,
-        z: 200 - (i / density) * 5200, // Evenly space them along the Z axis for a continuous stream
+        x: (Math.random() - 0.5) * 2500, // Clustered closer to center to ensure screen is full
+        y: (Math.random() - 0.5) * 1500,
+        z: 200 - (i / density) * 3200, // Evenly space them along a shorter Z axis for more density
         baseX: 0,
         baseY: 0,
         repelX: 0,
@@ -59,11 +59,11 @@ export default function TextGalaxy({
 
       particlesRef.current.forEach(p => {
         // Move forward
-        p.z += 4 * speed * dt;
+        p.z += 5 * speed * dt; // Slightly faster to maintain momentum
         if (p.z > 200) { // Past the camera
-          p.z -= 5200; // Seamless conveyor-belt reset (preserves exact spacing)
-          p.baseX = (Math.random() - 0.5) * 5000;
-          p.baseY = (Math.random() - 0.5) * 4000;
+          p.z -= 3200; // Seamless conveyor-belt reset (preserves exact spacing)
+          p.baseX = (Math.random() - 0.5) * 2500;
+          p.baseY = (Math.random() - 0.5) * 1500;
           p.repelX = 0;
           p.repelY = 0;
         }
@@ -112,8 +112,8 @@ export default function TextGalaxy({
             if (p) {
                elements[i].style.transform = `translate3d(${p.x}px, ${p.y}px, ${p.z}px)`;
                // fade out as they get close to camera or spawn far away
-               const alpha = p.z < -4000 ? (p.z + 5000)/1000 : (p.z > 0 ? (200 - p.z)/200 : 1);
-               elements[i].style.opacity = alpha;
+               const alpha = p.z < -2500 ? (p.z + 3000) / 500 : (p.z > 0 ? (200 - p.z) / 200 : 1);
+               elements[i].style.opacity = Math.max(0, Math.min(1, alpha));
             }
          }
       }
