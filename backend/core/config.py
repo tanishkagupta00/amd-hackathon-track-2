@@ -17,7 +17,7 @@ class Settings(BaseSettings):
         if self.IS_WINDOWS:
             d = os.path.join(self.TEMP_DIR, "captionforge_storage")
         else:
-            d = "/app/storage"
+            d = "/tmp/captionforge_storage"
         os.makedirs(d, exist_ok=True)
         return d
 
