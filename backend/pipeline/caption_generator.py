@@ -1,73 +1,86 @@
 import os
 import io
 import time
-import base64
 import logging
+import subprocess
+import tempfile
+import glob
+
 from google import genai
 from google.genai import types
 
 logger = logging.getLogger("captionforge.caption_generator")
 
+MIME_MAP = {
+    ".mp4":  "video/mp4",
+    ".mov":  "video/quicktime",
+    ".avi":  "video/x-msvideo",
+    ".webm": "video/webm",
+    ".mkv":  "video/x-matroska",
+    ".flv":  "video/x-flv",
+    ".wmv":  "video/x-ms-wmv",
+    ".3gp":  "video/3gpp",
+    ".mpg":  "video/mpeg",
+    ".mpeg": "video/mpeg",
+}
+
 CAPTION_PROMPT = (
     "These are evenly-spaced frames extracted from a video. Study them carefully in order.\n\n"
-    "Write a detailed, factual description of exactly what happens in the video:\n"
-    "- WHO is in the video (people, animals, specific objects as main subjects)\n"
+    "Write a detailed, factual description of exactly what happens:\n"
+    "- WHO is in the video (people, animals, specific objects)\n"
     "- WHAT specific actions occur — be precise, not vague\n"
-    "- WHERE it takes place (environment, setting, background details)\n"
-    "- HOW events unfold and change across the frames\n"
-    "- Any notable objects, text visible on screen, or significant details\n\n"
-    "Write 3-4 rich, concrete sentences describing what you actually see. "
-    "Do NOT be generic — never say 'a sequence of events' or 'an entity'. "
-    "Describe the real, specific content visible in these frames.\n\n"
-    "Output ONLY the factual description paragraph. No headers, bullets, or reasoning."
+    "- WHERE it takes place (environment, setting, background)\n"
+    "- HOW events change across the frames (sequence of actions)\n"
+    "- Any notable objects, text on screen, or significant details\n\n"
+    "Write 3-4 rich, concrete sentences about the ACTUAL content you see. "
+    "Never say 'a sequence of events' or 'an entity'. Be specific.\n\n"
+    "Output ONLY the factual description. No headers, bullets, or reasoning."
 )
 
 
 class CaptionGenerator:
     def __init__(self):
         self.api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
-        if self.api_key:
-            self.client = genai.Client(api_key=self.api_key)
-        else:
-            self.client = None
+        self.client = genai.Client(api_key=self.api_key) if self.api_key else None
 
     def generate_base_caption(self, video_path: str) -> str:
-        """
-        Generates a detailed factual base caption by having Gemini watch the video.
-
-        Strategy:
-          1. Try Gemini File API (best — handles large files, any codec via transcoding)
-          2. If File API fails, extract frames using PyAV (bundles its own FFmpeg, no system deps)
-             and send as inline images to Gemini
-          3. Raise with clear message if both fail
-        """
         if not self.client:
             raise Exception(
-                "No GEMINI_API_KEY configured. Please add it to Vercel environment variables."
+                "No GEMINI_API_KEY configured. Add it to Vercel → Settings → Environment Variables."
             )
 
-        # Strategy 1: Gemini File API
+        # Strategy 1: Gemini File API (handles large files, native video understanding)
         try:
-            return self._caption_via_file_api(video_path)
+            return self._gemini_file_api(video_path)
         except Exception as e:
-            logger.warning(f"[Strategy 1 - File API] Failed: {e}. Trying frame extraction...")
+            logger.warning(f"[File API] Failed: {e}. Falling back to frame extraction...")
 
-        # Strategy 2: PyAV frame extraction → inline images to Gemini
+        # Strategy 2: Extract frames with imageio-ffmpeg → send as images to Gemini
         try:
-            return self._caption_via_frames(video_path)
+            return self._frames_via_imageio_ffmpeg(video_path)
         except Exception as e2:
-            logger.error(f"[Strategy 2 - Frames] Also failed: {e2}")
+            logger.error(f"[Frames] Failed: {e2}")
             raise Exception(
-                f"Could not process this video with any method. "
-                f"Please try uploading an MP4 (H.264) video. Detail: {e2}"
+                f"Could not process video. File API error + Frame extraction failed. "
+                f"Try uploading an MP4 (H.264) video under 50MB. Detail: {e2}"
             )
 
     # ------------------------------------------------------------------ #
-    #  Strategy 1 — Gemini File API (primary)                              #
+    #  Strategy 1 — Gemini File API                                        #
     # ------------------------------------------------------------------ #
-    def _caption_via_file_api(self, video_path: str) -> str:
-        logger.info(f"[File API] Uploading: {os.path.basename(video_path)}")
-        video_file = self.client.files.upload(file=video_path)
+    def _gemini_file_api(self, video_path: str) -> str:
+        ext = os.path.splitext(video_path)[1].lower()
+        mime_type = MIME_MAP.get(ext, "video/mp4")
+
+        logger.info(f"[File API] Uploading as {mime_type}: {os.path.basename(video_path)}")
+
+        video_file = self.client.files.upload(
+            file=video_path,
+            config=types.UploadFileConfig(
+                mime_type=mime_type,
+                display_name="captionforge_video"
+            )
+        )
 
         max_wait = 180
         waited = 0
@@ -77,19 +90,31 @@ class CaptionGenerator:
             time.sleep(4)
             waited += 4
             video_file = self.client.files.get(name=video_file.name)
-            logger.info(f"  Waited {waited}s — state: {video_file.state.name}")
+            logger.info(f"  [{waited}s] state={video_file.state.name}")
 
         if video_file.state.name == "FAILED":
             try:
                 self.client.files.delete(name=video_file.name)
             except Exception:
                 pass
-            raise Exception("Gemini File API returned FAILED (unsupported codec).")
+            raise Exception(f"Gemini rejected this video format ({mime_type}). Will try frame extraction.")
 
-        logger.info("[File API] Processing done. Generating caption...")
+        prompt = (
+            "Watch this entire video carefully from start to finish.\n\n"
+            "Write a detailed, factual description:\n"
+            "- WHO is in the video (people, animals, objects)\n"
+            "- WHAT specific actions occur\n"
+            "- WHERE it takes place\n"
+            "- HOW events unfold over time\n"
+            "- Any notable text, dialogue, or sounds\n\n"
+            "Write 3-4 rich, concrete sentences. Never use vague terms like 'a sequence of events'. "
+            "Be specific about the actual content.\n\n"
+            "Output ONLY the factual description. No headers, bullets, or reasoning."
+        )
+
         response = self.client.models.generate_content(
             model="gemini-2.5-flash",
-            contents=[video_file, CAPTION_PROMPT],
+            contents=[video_file, prompt],
             config=types.GenerateContentConfig(temperature=0.2, max_output_tokens=600),
         )
         try:
@@ -98,90 +123,76 @@ class CaptionGenerator:
             pass
 
         caption = response.text.strip()
-        logger.info(f"[File API] Done: {caption[:80]}...")
+        logger.info(f"[File API] Caption: {caption[:80]}...")
         return caption
 
     # ------------------------------------------------------------------ #
-    #  Strategy 2 — PyAV frame extraction → inline images                  #
+    #  Strategy 2 — imageio-ffmpeg frame extraction (static FFmpeg binary) #
     # ------------------------------------------------------------------ #
-    def _caption_via_frames(self, video_path: str) -> str:
+    def _frames_via_imageio_ffmpeg(self, video_path: str) -> str:
         """
-        Use PyAV (bundled FFmpeg, no system deps) to extract frames, then
-        send them as inline JPEG images to Gemini.
+        Uses imageio-ffmpeg (which bundles a static FFmpeg binary in the pip wheel)
+        to extract frames as JPEG, then sends them as inline images to Gemini.
+        Works on Vercel without any system-level ffmpeg installed.
         """
-        import av  # PyAV — bundles its own FFmpeg binary
+        import imageio_ffmpeg
+        from PIL import Image as PILImage
 
-        logger.info(f"[Frames] Extracting frames from: {os.path.basename(video_path)}")
+        ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
+        logger.info(f"[Frames] ffmpeg found: {ffmpeg_exe}")
 
-        container = av.open(video_path)
-        stream = container.streams.video[0]
-
-        total_frames = stream.frames or 0
-        duration_secs = float(stream.duration * stream.time_base) if stream.duration else 0
-
-        # Extract up to 10 evenly-spaced keyframes
-        target_count = 10
         image_parts = []
 
-        # Seek-based extraction
-        if duration_secs > 0:
-            timestamps = [duration_secs * i / target_count for i in range(target_count)]
-            seen = set()
-            for ts in timestamps:
-                try:
-                    container.seek(int(ts * av.time_base ** -1), stream=stream)
-                    for frame in container.decode(video=0):
-                        frame_key = frame.pts
-                        if frame_key in seen:
-                            continue
-                        seen.add(frame_key)
-                        img = frame.to_image()
-                        img.thumbnail((640, 360))
-                        buf = io.BytesIO()
-                        img.save(buf, format="JPEG", quality=75)
-                        image_parts.append(
-                            types.Part.from_bytes(
-                                data=buf.getvalue(),
-                                mime_type="image/jpeg"
-                            )
-                        )
-                        break
-                except Exception:
-                    pass
-        
-        # Fallback: decode sequentially if seek didn't work
-        if not image_parts:
-            container.seek(0)
-            frame_interval = max(1, (total_frames or 100) // target_count)
-            for i, frame in enumerate(container.decode(video=0)):
-                if i % frame_interval == 0:
-                    img = frame.to_image()
-                    img.thumbnail((640, 360))
-                    buf = io.BytesIO()
-                    img.save(buf, format="JPEG", quality=75)
+        with tempfile.TemporaryDirectory(dir="/tmp") as tmpdir:
+            out_pattern = os.path.join(tmpdir, "frame_%03d.jpg")
+
+            # Try to get 8 evenly-spaced frames using fps filter
+            # First probe the video duration
+            probe_cmd = [
+                ffmpeg_exe, "-i", video_path,
+                "-f", "null", "-"
+            ]
+            probe = subprocess.run(probe_cmd, capture_output=True, timeout=30, text=True)
+            
+            # Try with select filter for even distribution
+            cmd = [
+                ffmpeg_exe, "-i", video_path,
+                "-vf", "select='not(mod(n,30))',scale=640:360",
+                "-vsync", "vfr",
+                "-frames:v", "8",
+                "-q:v", "3",
+                out_pattern,
+                "-y", "-loglevel", "error"
+            ]
+            result = subprocess.run(cmd, capture_output=True, timeout=90)
+
+            # Fallback: just grab first 8 frames at 1fps
+            if result.returncode != 0 or not glob.glob(os.path.join(tmpdir, "frame_*.jpg")):
+                cmd2 = [
+                    ffmpeg_exe, "-i", video_path,
+                    "-vf", "fps=1,scale=640:360",
+                    "-frames:v", "8",
+                    out_pattern,
+                    "-y", "-loglevel", "error"
+                ]
+                subprocess.run(cmd2, capture_output=True, timeout=90)
+
+            for fpath in sorted(glob.glob(os.path.join(tmpdir, "frame_*.jpg")))[:8]:
+                with open(fpath, "rb") as fp:
                     image_parts.append(
-                        types.Part.from_bytes(
-                            data=buf.getvalue(),
-                            mime_type="image/jpeg"
-                        )
+                        types.Part.from_bytes(data=fp.read(), mime_type="image/jpeg")
                     )
-                if len(image_parts) >= target_count:
-                    break
-
-        container.close()
 
         if not image_parts:
-            raise Exception("Could not extract any frames from this video file.")
+            raise Exception("imageio-ffmpeg could not extract any frames from this video.")
 
         logger.info(f"[Frames] Extracted {len(image_parts)} frames. Sending to Gemini...")
-
         contents = image_parts + [CAPTION_PROMPT]
         response = self.client.models.generate_content(
             model="gemini-2.5-flash",
             contents=contents,
             config=types.GenerateContentConfig(temperature=0.2, max_output_tokens=600),
         )
-
         caption = response.text.strip()
-        logger.info(f"[Frames] Done: {caption[:80]}...")
+        logger.info(f"[Frames] Caption: {caption[:80]}...")
         return caption
