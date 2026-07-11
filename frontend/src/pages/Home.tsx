@@ -78,16 +78,7 @@ export default function Home() {
               <Github className="h-4 w-4" />
               <span className="hidden sm:inline">GitHub</span>
             </a>
-            <button
-              onClick={() => navigate('/app')}
-              className="px-4 py-2 rounded-full text-sm font-semibold
-                bg-transparent border border-ai-gold/40 text-ai-accent
-                hover:bg-ai-gold/10
-                transition-colors duration-150
-                focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ai-gold focus-visible:ring-offset-2 focus-visible:ring-offset-obsidian"
-            >
-              Launch App
-            </button>
+
           </div>
         </nav>
 
