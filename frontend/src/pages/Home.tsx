@@ -231,7 +231,7 @@ export default function Home() {
               ].map(({ step, title, desc, Icon }, i) => (
                 <FadeIn key={step} delay={0.1 * i} className="relative">
                   <div className="card p-6 rounded-xl h-full group">
-                    <div className="text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-br from-ai-gold/20 to-ai-goldLight/20 mb-4 group-hover:from-ai-gold/40 group-hover:to-ai-goldLight/40 transition-all">
+                    <div className="text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-br from-ai-gold/60 to-ai-goldLight/60 mb-4 group-hover:from-ai-gold group-hover:to-ai-goldLight transition-all">
                       {step}
                     </div>
                     <Icon className="h-8 w-8 text-ai-gold mb-4 group-hover:text-ai-goldLight transition-colors" />
