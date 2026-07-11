@@ -148,7 +148,10 @@ export default function DragDrop({ onUploadSuccess }: DragDropProps) {
       setError('Invalid file format. Please upload an MP4, MOV, or AVI video.');
       return;
     }
-    if (file.size > 50 * 1024 * 1024) { setError('File size exceeds 50MB limit.'); return; }
+    if (file.size > 4.5 * 1024 * 1024) { 
+      setError('File size exceeds Vercel 4.5MB Serverless limit. Please use a smaller video for this demo.'); 
+      return; 
+    }
 
     setMorphing(true);
     await new Promise(r => setTimeout(r, 200));
@@ -164,7 +167,13 @@ export default function DragDrop({ onUploadSuccess }: DragDropProps) {
       });
       onUploadSuccess(response.data.video_id, response.data.filename);
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to upload video file.');
+      if (err.response?.status === 413) {
+        setError("Vercel Error: Payload Too Large. The file exceeded the 4.5MB serverless limit.");
+      } else if (err.response?.status === 504) {
+        setError("Vercel Error: Gateway Timeout. Upload took too long (limit is 10s).");
+      } else {
+        setError(err.response?.data?.detail || 'Failed to upload video file.');
+      }
       setSelectedFile(null);
     } finally {
       setLoading(false);
@@ -211,7 +220,7 @@ export default function DragDrop({ onUploadSuccess }: DragDropProps) {
                 {dragActive ? 'Release to analyse' : 'Drop a video file to begin analysis'}
               </p>
               <p className="text-sm text-zinc-500">
-                MP4 &nbsp;·&nbsp; MOV &nbsp;·&nbsp; AVI &nbsp;·&nbsp; max 50 MB
+                MP4 &nbsp;·&nbsp; MOV &nbsp;·&nbsp; AVI &nbsp;·&nbsp; max 4.5 MB (Vercel Limit)
               </p>
             </div>
 
