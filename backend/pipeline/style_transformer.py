@@ -1,34 +1,18 @@
-import os
-from openai import OpenAI
+from .llm_service import LLMService
 
 class StyleTransformer:
     def __init__(self):
-        self.api_key = os.environ.get("FIREWORKS_API_KEY")
-        if self.api_key:
-            self.client = OpenAI(
-                base_url="https://api.fireworks.ai/inference/v1",
-                api_key=self.api_key
-            )
-        else:
-            self.client = None
+        self.llm_service = LLMService()
 
     def transform(self, base_caption: str, style: str) -> str:
         """
         Transforms the baseline factual caption into the requested style via LLM rewrite.
+        Uses Fireworks AI by default, falling back to Gemini if it fails.
         """
-        if not self.client:
-            return f"[{style.upper()}] {base_caption}"
-            
-        messages = self._build_messages(base_caption, style)
+        system_content, user_content = self._build_prompts(base_caption, style)
+        
         try:
-            # Using glm-5p1 as specified in the hackathon integration guide
-            response = self.client.chat.completions.create(
-                model="accounts/fireworks/models/glm-5p1",
-                messages=messages,
-                max_tokens=600,
-                temperature=0.7
-            )
-            text = response.choices[0].message.content.strip()
+            text = self.llm_service.generate_text(system_content, user_content)
             if text:
                 return text
         except Exception as e:
@@ -36,7 +20,7 @@ class StyleTransformer:
             
         return base_caption
 
-    def _build_messages(self, base_caption: str, style: str) -> list[dict]:
+    def _build_prompts(self, base_caption: str, style: str) -> tuple[str, str]:
         style_prompt = ""
         if style == "formal":
             style_prompt = "Highly objective, formal, third-person report. No conversational words or humor."
@@ -52,18 +36,15 @@ class StyleTransformer:
             "You instantly output the final translated text and nothing else."
         )
         
-        return [
-            {"role": "system", "content": system_content},
-            {
-                "role": "user", 
-                "content": f"Style: {style_prompt}\nDescription: A cat sitting on a mat."
-            },
-            {
-                "role": "assistant",
-                "content": "A feline creature resting upon a woven floor covering."
-            },
-            {
-                "role": "user", 
-                "content": f"Style: {style_prompt}\nDescription: {base_caption}"
-            }
-        ]
+        user_content = (
+            "Example translation:\n"
+            f"Input Style: {style_prompt}\n"
+            "Input Description: A cat sitting on a mat.\n"
+            "Output: A feline creature resting upon a woven floor covering.\n\n"
+            "Now translate the following:\n"
+            f"Input Style: {style_prompt}\n"
+            f"Input Description: {base_caption}\n"
+            "Output:"
+        )
+        
+        return system_content, user_content
