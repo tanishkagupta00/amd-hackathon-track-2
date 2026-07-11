@@ -35,8 +35,8 @@ class LLMService:
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": user_prompt}
                     ],
-                    max_tokens=600,
-                    temperature=0.7
+                    max_tokens=800,
+                    temperature=0.75
                 )
                 text = response.choices[0].message.content.strip()
                 if text:
@@ -55,7 +55,7 @@ class LLMService:
                     config=types.GenerateContentConfig(
                         system_instruction=system_prompt,
                         temperature=0.7,
-                        max_output_tokens=600
+                        max_output_tokens=800
                     )
                 )
                 if response.text:
