@@ -56,15 +56,24 @@ export default function Monitor({ videoId, videoUrl, onProcessingComplete }: Mon
 
     axios.post('/api/v1/captions/generate', requestBody)
       .then((res) => {
-        // Automatically jump to completed when the synchronous API returns
         setStatus('completed');
         setLogs(prev => [...prev, '[INFO] Caption generation finished successfully.']);
-        
-        // Pass the result directly to avoid the separate GET request which fails on Vercel's ephemeral FS
-        if (res.data && res.data.captions && res.data.evaluations) {
-          onProcessingComplete(videoId, res.data.captions, res.data.evaluations);
+
+        if (res.data && res.data.captions) {
+          // Normalize: backend returns {style: {style, caption}} (CaptionResult schema)
+          // but Matrix expects a flat {style: string} dict. Unwrap here.
+          const rawCaptions = res.data.captions;
+          const flatCaptions: Record<string, string> = {};
+          for (const [key, val] of Object.entries(rawCaptions)) {
+            if (typeof val === 'string') {
+              flatCaptions[key] = val;                         // legacy flat format
+            } else if (val && typeof (val as any).caption === 'string') {
+              flatCaptions[key] = (val as any).caption;       // new CaptionResult format
+            }
+          }
+          onProcessingComplete(videoId, flatCaptions, res.data.evaluations || {});
         } else {
-          onProcessingComplete(videoId); // Fallback
+          onProcessingComplete(videoId);
         }
       })
       .catch(err => {
@@ -83,6 +92,7 @@ export default function Monitor({ videoId, videoUrl, onProcessingComplete }: Mon
         }
 
         const errorDetail = detail || err.message || 'Unknown error';
+        setStatus('failed');
         setLogs(prev => [...prev, `[ERROR] Failed to start generation: ${errorDetail}`]);
       });
 

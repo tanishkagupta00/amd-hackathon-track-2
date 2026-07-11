@@ -4,10 +4,8 @@ import shutil
 import logging
 from fastapi import APIRouter, Depends, UploadFile, File, BackgroundTasks, Request, HTTPException
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import Session
-from typing import List, Dict, Any
 
 from database import get_db, VideoRecord
 from core.config import settings
@@ -15,6 +13,8 @@ from schemas.models import (
     VideoUploadResponse,
     VideoUrlUploadRequest,
     CaptionGenerationRequest,
+    CaptionResult,
+    StyleItem,
     EvaluationRequest,
     EvaluationResponse
 )
@@ -268,6 +268,8 @@ def generate_captions(
                     },
                     evaluations=res.get("evaluations") or {},
                 )
+            except HTTPException:
+                raise
             except Exception as e:
                 logger.exception("[/captions/generate] pipeline failed")
                 raise HTTPException(status_code=500, detail=str(e))
