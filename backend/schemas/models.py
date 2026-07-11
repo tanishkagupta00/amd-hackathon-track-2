@@ -6,6 +6,10 @@ class VideoUploadResponse(BaseModel):
     status: str
     filename: str
 
+class VideoUrlUploadRequest(BaseModel):
+    url: str
+    filename: str
+
 class CaptionGenerationRequest(BaseModel):
     video_id: str
     styles: List[str] = Field(default=["formal", "sarcastic", "humorous-tech", "humorous-non-tech"])

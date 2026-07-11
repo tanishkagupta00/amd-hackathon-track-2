@@ -148,8 +148,8 @@ export default function DragDrop({ onUploadSuccess }: DragDropProps) {
       setError('Invalid file format. Please upload an MP4, MOV, or AVI video.');
       return;
     }
-    if (file.size > 4.5 * 1024 * 1024) { 
-      setError('File size exceeds Vercel 4.5MB Serverless limit. Please use a smaller video for this demo.'); 
+    if (file.size > 50 * 1024 * 1024) { 
+      setError('File size exceeds 50MB limit.'); 
       return; 
     }
 
@@ -162,17 +162,29 @@ export default function DragDrop({ onUploadSuccess }: DragDropProps) {
     const formData = new FormData();
     formData.append('file', file);
     try {
-      const response = await axios.post('/api/v1/videos', formData, {
+      // 1. Upload to tmpfiles.org to bypass Vercel 4.5MB payload limit
+      const tmpResponse = await axios.post('https://tmpfiles.org/api/v1/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
+      
+      const tmpUrl = tmpResponse.data?.data?.url;
+      if (!tmpUrl) throw new Error("Failed to retrieve temporary URL.");
+      
+      // Convert to direct download URL
+      const directUrl = tmpUrl.replace('tmpfiles.org/', 'tmpfiles.org/dl/');
+
+      // 2. Send the URL to Vercel backend for server-side download
+      const response = await axios.post('/api/v1/videos/url', {
+        url: directUrl,
+        filename: file.name
+      });
+      
       onUploadSuccess(response.data.video_id, response.data.filename);
     } catch (err: any) {
       if (err.response?.status === 413) {
-        setError("Vercel Error: Payload Too Large. The file exceeded the 4.5MB serverless limit.");
-      } else if (err.response?.status === 504) {
-        setError("Vercel Error: Gateway Timeout. Upload took too long (limit is 10s).");
+        setError("Vercel Error: Payload Too Large.");
       } else {
-        setError(err.response?.data?.detail || 'Failed to upload video file.');
+        setError(err.response?.data?.detail || err.message || 'Failed to upload video file.');
       }
       setSelectedFile(null);
     } finally {
@@ -220,7 +232,7 @@ export default function DragDrop({ onUploadSuccess }: DragDropProps) {
                 {dragActive ? 'Release to analyse' : 'Drop a video file to begin analysis'}
               </p>
               <p className="text-sm text-zinc-500">
-                MP4 &nbsp;·&nbsp; MOV &nbsp;·&nbsp; AVI &nbsp;·&nbsp; max 4.5 MB (Vercel Limit)
+                MP4 &nbsp;·&nbsp; MOV &nbsp;·&nbsp; AVI &nbsp;·&nbsp; max 50 MB
               </p>
             </div>
 

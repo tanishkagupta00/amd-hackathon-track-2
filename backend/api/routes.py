@@ -9,10 +9,12 @@ from database import get_db, VideoRecord
 from core.config import settings
 from schemas.models import (
     VideoUploadResponse,
+    VideoUrlUploadRequest,
     CaptionGenerationRequest,
     EvaluationRequest,
     EvaluationResponse
 )
+import requests
 from pipeline.pipeline import CaptionForgePipeline
 from pipeline.caption_critic import CaptionCritic
 
@@ -51,6 +53,43 @@ def upload_video(file: UploadFile = File(...), db: Session = Depends(get_db)):
         video_id=video_id,
         status="uploaded",
         filename=file.filename
+    )
+
+@router.post("/videos/url", response_model=VideoUploadResponse)
+def upload_video_from_url(req: VideoUrlUploadRequest, db: Session = Depends(get_db)):
+    # Validate file extension
+    ext = os.path.splitext(req.filename)[1].lower()
+    if ext not in [".mp4", ".mov", ".avi"]:
+        raise HTTPException(status_code=400, detail="Unsupported video format. Must be MP4, MOV, or AVI.")
+
+    video_id = str(uuid.uuid4())
+    filename = f"{video_id}{ext}"
+    dest_path = os.path.join(settings.STORAGE_DIR, filename)
+
+    try:
+        # Download the file from the URL directly to the ephemeral storage
+        with requests.get(req.url, stream=True, timeout=30) as r:
+            r.raise_for_status()
+            with open(dest_path, "wb") as f:
+                for chunk in r.iter_content(chunk_size=8192):
+                    f.write(chunk)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to download video from URL: {str(e)}")
+
+    # Create DB record
+    record = VideoRecord(
+        id=video_id,
+        filename=req.filename,
+        status="uploaded"
+    )
+    record.append_log("Video downloaded from URL successfully.")
+    db.add(record)
+    db.commit()
+
+    return VideoUploadResponse(
+        video_id=video_id,
+        status="uploaded",
+        filename=req.filename
     )
 
 @router.get("/videos/{id}")
