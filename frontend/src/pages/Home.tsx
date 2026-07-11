@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Sparkles, Video, BrainCircuit, Wand2, ChevronRight, Github, Zap, Shield, Layers, Gauge, Code2, Target, CheckCircle2, Eye, Cpu, Clock } from 'lucide-react';
 import TextGalaxy from '../components/TextGalaxy';
 import Shuffle from '../components/Shuffle';
+import FlyingPosters from '../components/FlyingPosters';
 
 function FadeIn({ children, delay = 0, className = "" }: { children: React.ReactNode, delay?: number, className?: string }) {
   const [isVisible, setVisible] = useState(false);
@@ -153,47 +154,73 @@ export default function Home() {
 
         {/* ── Core Features ── */}
         <section className="py-20 px-4">
-          <div className="max-w-6xl mx-auto">
-            <FadeIn className="text-center mb-16">
-              <h2 className="text-4xl md:text-5xl font-bold font-display mb-4">
-                Powered by <span className="hero-title">Multi-Agent AI</span>
-              </h2>
-              <p className="text-zinc-400 max-w-2xl mx-auto">
-                A modular pipeline that extracts visual semantics, reasons about temporal context, and transforms into styled captions.
-              </p>
-            </FadeIn>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {[
-                {
-                  Icon: Video,
-                  title: 'Vision Extraction',
-                  body: 'Motion-aware keyframe sampling and semantic scene understanding — captures exactly what is happening.',
-                },
-                {
-                  Icon: BrainCircuit,
-                  title: 'Temporal Reasoning',
-                  body: 'LLM-powered scene graph analysis connects visual events across time into a coherent narrative.',
-                },
-                {
-                  Icon: Wand2,
-                  title: 'Style Matrix',
-                  body: 'Parallel style transformers output Formal, Sarcastic, Humorous-Tech, and Humorous-Non-Tech captions.',
-                },
-              ].map(({ Icon, title, body }, i) => (
-                <FadeIn key={title} delay={0.1 * i}>
-                  <div
-                    className="card p-7 rounded-2xl group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ai-gold/40 h-full"
-                    tabIndex={0}
-                  >
-                    <div className={`h-12 w-12 rounded-xl flex items-center justify-center mb-5 bg-gradient-to-br from-zinc-800 to-zinc-900 border border-zinc-700/50 shadow-lg`}>
-                      <Icon className="h-6 w-6 text-ai-gold group-hover:text-ai-goldLight transition-colors" />
+          <div className="max-w-6xl mx-auto flex flex-col lg:flex-row gap-12 items-center">
+            {/* Text and Cards (Left Side) */}
+            <div className="w-full lg:w-1/2">
+              <FadeIn className="mb-12">
+                <h2 className="text-4xl md:text-5xl font-bold font-display mb-4">
+                  Powered by <span className="hero-title">Multi-Agent AI</span>
+                </h2>
+                <p className="text-zinc-400">
+                  A modular pipeline that extracts visual semantics, reasons about temporal context, and transforms into styled captions.
+                </p>
+              </FadeIn>
+              
+              <div className="flex flex-col gap-6">
+                {[
+                  {
+                    Icon: Video,
+                    title: 'Vision Extraction',
+                    body: 'Motion-aware keyframe sampling and semantic scene understanding — captures exactly what is happening.',
+                  },
+                  {
+                    Icon: BrainCircuit,
+                    title: 'Temporal Reasoning',
+                    body: 'LLM-powered scene graph analysis connects visual events across time into a coherent narrative.',
+                  },
+                  {
+                    Icon: Wand2,
+                    title: 'Style Matrix',
+                    body: 'Parallel style transformers output Formal, Sarcastic, Humorous-Tech, and Humorous-Non-Tech captions.',
+                  },
+                ].map(({ Icon, title, body }, i) => (
+                  <FadeIn key={title} delay={0.1 * i}>
+                    <div className="card p-7 rounded-2xl group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ai-gold/40 flex items-start gap-5">
+                      <div className={`flex-shrink-0 h-12 w-12 rounded-xl flex items-center justify-center bg-gradient-to-br from-zinc-800 to-zinc-900 border border-zinc-700/50 shadow-lg`}>
+                        <Icon className="h-6 w-6 text-ai-gold group-hover:text-ai-goldLight transition-colors" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-bold text-white font-display mb-2 group-hover:text-ai-goldLight transition-colors">{title}</h3>
+                        <p className="text-sm text-zinc-400 leading-relaxed">{body}</p>
+                      </div>
                     </div>
-                    <h3 className="text-lg font-bold text-white font-display mb-3 group-hover:text-ai-goldLight transition-colors">{title}</h3>
-                    <p className="text-sm text-zinc-400 leading-relaxed">{body}</p>
-                  </div>
-                </FadeIn>
-              ))}
+                  </FadeIn>
+                ))}
+              </div>
+            </div>
+
+            {/* FlyingPosters Animation (Right Side) */}
+            <div className="w-full lg:w-1/2 h-[600px] relative rounded-3xl overflow-hidden border border-white/10 shadow-2xl bg-zinc-900/20">
+              <div className="absolute inset-0 pointer-events-auto">
+                <FlyingPosters 
+                  items={[
+                    'https://images.unsplash.com/photo-1620712943543-bcc4688e7485?q=80&w=800&auto=format&fit=crop',
+                    'https://images.unsplash.com/photo-1677442136019-21780ecad995?q=80&w=800&auto=format&fit=crop',
+                    'https://images.unsplash.com/photo-1633412802994-5c058f151b66?q=80&w=800&auto=format&fit=crop',
+                    'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?q=80&w=800&auto=format&fit=crop',
+                    'https://images.unsplash.com/photo-1611162617474-5b21e879e113?q=80&w=800&auto=format&fit=crop'
+                  ]}
+                  planeWidth={280}
+                  planeHeight={360}
+                  distortion={2}
+                  scrollEase={0.05}
+                  cameraFov={50}
+                  cameraZ={25}
+                />
+              </div>
+              
+              {/* Overlay Gradient to blend nicely */}
+              <div className="absolute inset-0 bg-gradient-to-t from-obsidian via-transparent to-transparent pointer-events-none opacity-50" />
             </div>
           </div>
         </section>
