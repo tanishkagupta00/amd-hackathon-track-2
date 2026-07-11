@@ -30,7 +30,7 @@ class LLMService:
         if self.fireworks_client:
             try:
                 response = self.fireworks_client.chat.completions.create(
-                    model="accounts/fireworks/models/glm-5p1",
+                    model="accounts/fireworks/models/llama-v3p1-70b-instruct",
                     messages=[
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": user_prompt}

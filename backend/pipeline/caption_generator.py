@@ -24,9 +24,12 @@ class CaptionGenerator:
             visual_context = "Local vision extraction skipped."
 
         if not self.client:
+            if visual_context == "Local vision extraction skipped.":
+                return "A generic video showing a sequence of events. A person or object is interacting with the environment."
             from .llm_service import LLMService
             llm = LLMService()
-            return llm.generate_text("You are a factual video captioner.", f"Based on this visual context extracted locally: '{visual_context}', generate a factual 2-sentence description of what might be happening.")
+            fallback_prompt = f"Context: {visual_context}\nGenerate a simple 2-sentence factual description of what is happening. Do not include any reasoning or meta-analysis."
+            return llm.generate_text("You are a strict, objective video captioner. Output ONLY the final factual caption.", fallback_prompt).strip()
         
         try:
             # 2. Try Gemini Video File API for deep temporal understanding
@@ -70,10 +73,14 @@ Generate a factual description including:
         except Exception as e:
             # 3. Graceful Fallback: If Video API fails, use the local context with the text LLM
             print(f"Gemini Video API failed ({e}). Falling back to local AMD visual context and LLMService.")
+            
+            if visual_context == "Local vision extraction skipped.":
+                return "A generic video showing a sequence of events. A person or object is interacting with the environment."
+                
             from .llm_service import LLMService
             llm = LLMService()
             fallback_prompt = (
-                f"Video processing failed, but we extracted this visual context locally using an AMD GPU: '{visual_context}'. "
-                "Generate a factual, objective 2-sentence description of what might be happening in this video. Do not apologize or mention the failure."
+                f"Based on the following visual context: '{visual_context}', "
+                "generate a simple, factual 2-sentence description of what is happening. Do not include any reasoning or analysis. Just output the 2 sentences."
             )
-            return llm.generate_text("You are an objective video captioning assistant. Output ONLY the factual caption.", fallback_prompt).strip()
+            return llm.generate_text("You are an objective video captioning assistant. Output ONLY the final factual caption.", fallback_prompt).strip()

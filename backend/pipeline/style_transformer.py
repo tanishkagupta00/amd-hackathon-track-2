@@ -32,20 +32,14 @@ class StyleTransformer:
             style_prompt = "Observational comedy with general, everyday relatable humor and tropes. Do NOT use any programming/tech jokes."
             
         system_content = (
-            "You are a strict, direct text restyler API. You MUST output ONLY the final translated text and NOTHING else. "
-            "Do NOT include any reasoning, thoughts, analysis, numbered lists, or conversational filler. "
-            "If you output anything other than the final styled caption, the system will crash."
+            "You are a strict text restyler API. You MUST output ONLY the final translated text and NOTHING else. "
+            "Do NOT include any reasoning, thoughts, analysis, numbered lists, or conversational filler."
         )
         
         user_content = (
-            "Example translation:\n"
             f"Input Style: {style_prompt}\n"
-            "Input Description: A cat sitting on a mat.\n"
-            "Output: A feline creature resting upon a woven floor covering.\n\n"
-            "Now translate the following. Output ONLY the final text.\n"
-            f"Input Style: {style_prompt}\n"
-            f"Input Description: {base_caption}\n"
-            "Output:"
+            f"Input Description: {base_caption}\n\n"
+            "Output the final translated text directly. NO reasoning, NO analysis, NO introductory text. Just the 1-2 sentence translation."
         )
         
         return system_content, user_content
