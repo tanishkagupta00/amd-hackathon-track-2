@@ -161,7 +161,7 @@ def generate_captions(
 
     db.refresh(record)
     if record.status == "failed":
-        raise HTTPException(status_code=500, detail="Pipeline execution failed.")
+        raise HTTPException(status_code=500, detail=record.logs)
 
     return {
         "status": "completed", 

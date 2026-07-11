@@ -61,7 +61,10 @@ export default function Monitor({ videoId, onProcessingComplete }: MonitorProps)
           onProcessingComplete(videoId); // Fallback
         }
       })
-      .catch(err => setLogs(prev => [...prev, `[ERROR] Failed to start generation: ${err.message}`]));
+      .catch(err => {
+        const errorDetail = err.response?.data?.detail || err.message;
+        setLogs(prev => [...prev, `[ERROR] Failed to start generation: ${errorDetail}`]);
+      });
 
     // 2. Mock a log stream and status transitions since we can't reliably poll the ephemeral DB
     const mockInterval = setInterval(() => {
