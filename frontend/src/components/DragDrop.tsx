@@ -165,27 +165,25 @@ export default function DragDrop({ onUploadSuccess }: DragDropProps) {
     const formData = new FormData();
     formData.append('file', file);
     try {
-      // 1. Upload to tmpfiles.org to bypass Vercel 4.5MB payload limit
+      // Upload to tmpfiles.org to get a temporary public URL.
+      // We do NOT call /api/v1/videos/url afterwards — that route downloads the file
+      // into the backend's ephemeral /tmp which is discarded on Vercel anyway.
+      // Instead we generate a client-side UUID and pass the tmpfiles URL directly
+      // to /captions/generate, which downloads the video fresh inside that request.
       const tmpResponse = await axios.post('https://tmpfiles.org/api/v1/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 
       const tmpUrl = tmpResponse.data?.data?.url;
-      if (!tmpUrl) throw new Error("Failed to retrieve temporary URL.");
+      if (!tmpUrl) throw new Error('tmpfiles.org did not return a URL. Please try again.');
 
-      // Convert to direct download URL
+      // Convert page URL → direct download URL
       const directUrl = tmpUrl.replace('tmpfiles.org/', 'tmpfiles.org/dl/');
 
-      // 2. Send the URL to the backend for server-side download
-      const response = await axios.post('/api/v1/videos/url', {
-        url: directUrl,
-        filename: file.name
-      });
+      // Generate a local video_id — no backend DB write needed
+      const videoId = crypto.randomUUID();
 
-      // Pass directUrl up so Workspace can give it to Monitor, which forwards it
-      // to /captions/generate — this makes generation self-contained on Vercel
-      // where each serverless container has its own ephemeral /tmp (no shared DB).
-      onUploadSuccess(response.data.video_id, response.data.filename, directUrl);
+      onUploadSuccess(videoId, file.name, directUrl);
     } catch (err: any) {
       if (err.response?.status === 413) {
         setError("Vercel Error: Payload Too Large.");

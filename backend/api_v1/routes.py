@@ -179,30 +179,29 @@ def generate_captions(
     """
     Self-contained caption generation for Vercel serverless.
 
-    Vercel runs each function invocation in an isolated container with an ephemeral /tmp.
-    The DB record and video file written during /videos/url upload live in one container's
-    /tmp and are GONE by the time this endpoint runs in a different container.
+    New flow (Vercel):
+      - Frontend uploads to tmpfiles.org, gets a directUrl
+      - Frontend calls this endpoint with { video_id, video_url }
+      - This endpoint downloads the video fresh from video_url, runs the pipeline,
+        returns captions — no DB lookup, no /videos/url call needed at all.
 
-    Fix: when video_url is provided in the request body we bypass the DB lookup entirely —
-    we download the video fresh, run the pipeline, and return the result directly.
-    The DB is used only when running locally or on a persistent server where /tmp survives.
+    Legacy flow (local / Railway):
+      - Frontend called /videos/url first, which saved file + DB record
+      - This endpoint finds the record by video_id and uses the saved file
     """
-    import tempfile
+    import tempfile, shutil as _shutil
 
-    video_path = None
     tmp_dir = None
-    record = None
 
     try:
-        # ── Path A: video_url provided — fully self-contained, no DB needed ──
+        # ── Path A: video_url provided — fully self-contained ─────────────────
         if req.video_url:
-            logger.info(f"Self-contained mode: downloading video from URL for task {req.video_id}")
+            logger.info(f"[generate] Self-contained mode — downloading from URL: {req.video_url[:80]}")
 
             tmp_dir = tempfile.mkdtemp(prefix="captionforge_gen_")
-            # Derive filename from video_id + extension from the URL
-            url_path = req.video_url.split("?")[0]  # strip query params
+            url_path = req.video_url.split("?")[0]
             ext = os.path.splitext(url_path)[1].lower() or ".mp4"
-            video_path = os.path.join(tmp_dir, f"{req.video_id}{ext}")
+            video_path = os.path.join(tmp_dir, f"video{ext}")
 
             headers = {
                 "User-Agent": "Mozilla/5.0 (compatible; CaptionForge/1.0)",
@@ -212,7 +211,7 @@ def generate_captions(
             for attempt in range(3):
                 try:
                     with requests.get(
-                        req.video_url, stream=True, timeout=90,
+                        req.video_url, stream=True, timeout=120,
                         headers=headers, allow_redirects=True
                     ) as r:
                         r.raise_for_status()
@@ -228,19 +227,19 @@ def generate_captions(
                                     f.write(chunk)
 
                     file_size = os.path.getsize(video_path)
-                    logger.info(f"Downloaded {file_size / 1024:.1f} KB to {video_path}")
+                    logger.info(f"[generate] Downloaded {file_size / 1024:.1f} KB → {video_path}")
                     if file_size < 10_000:
                         raise Exception(
                             f"Downloaded file is only {file_size} bytes — "
                             "link expired or returned an error page. Please re-upload."
                         )
                     last_error = None
-                    break
+                    break  # success
                 except Exception as e:
                     last_error = e
-                    logger.warning(f"Download attempt {attempt + 1}/3 failed: {e}")
+                    logger.warning(f"[generate] Download attempt {attempt + 1}/3 failed: {e}")
                     if attempt < 2:
-                        import time; time.sleep(2)
+                        import time; time.sleep(3)
 
             if last_error:
                 raise HTTPException(
@@ -248,7 +247,6 @@ def generate_captions(
                     detail=f"Failed to download video after 3 attempts: {str(last_error)}"
                 )
 
-            # Run pipeline directly — no DB record needed
             res = pipeline.process_video(video_path)
             return {
                 "status": "completed",
@@ -257,21 +255,19 @@ def generate_captions(
                 "evaluations": res["evaluations"],
             }
 
-        # ── Path B: no video_url — try DB lookup (local / persistent server) ──
+        # ── Path B: no video_url — legacy DB lookup (local / persistent server) ─
         record = db.query(VideoRecord).filter(VideoRecord.id == req.video_id).first()
         if not record:
             raise HTTPException(
                 status_code=404,
                 detail=(
-                    "Video record not found. This usually means the upload and generate "
-                    "calls ran on different Vercel containers. Make sure the frontend "
-                    "sends video_url in the generate request body."
+                    "Video record not found and no video_url was provided. "
+                    "The frontend must include video_url in the request body."
                 )
             )
 
         ext = os.path.splitext(record.filename)[1]
         video_path = os.path.join(settings.STORAGE_DIR, f"{req.video_id}{ext}")
-
         if not os.path.exists(video_path):
             raise HTTPException(status_code=404, detail="Video source file missing from storage.")
 
@@ -295,9 +291,7 @@ def generate_captions(
         }
 
     finally:
-        # Clean up the temp dir created in Path A
         if tmp_dir:
-            import shutil as _shutil
             _shutil.rmtree(tmp_dir, ignore_errors=True)
 
 @router.get("/captions/{id}")
