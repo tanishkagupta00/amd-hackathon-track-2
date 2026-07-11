@@ -111,31 +111,62 @@ def _convert_to_h264_mp4(input_path: str, ffmpeg_bin: str) -> str:
 def _upload_and_wait(client, video_path: str, mime_type: str, display_name: str):
     """
     Uploads video_path to the Gemini File API and polls until ACTIVE or FAILED.
+    Retries up to 3 times on transient SSL/connection errors (common on
+    Windows Python 3.13 with httpx due to TLS EOF mid-handshake).
     Returns the File object when ACTIVE.
     Raises on FAILED or timeout.
     """
     file_size = os.path.getsize(video_path)
     BYTESIO_THRESHOLD = 20 * 1024 * 1024  # 20 MB
 
-    if file_size <= BYTESIO_THRESHOLD:
-        with open(video_path, "rb") as f:
-            upload_source = io.BytesIO(f.read())
-        logger.info(f"BytesIO upload path ({file_size / 1024 / 1024:.2f} MB).")
-    else:
-        upload_source = open(video_path, "rb")
-        logger.info(f"Streaming upload path ({file_size / 1024 / 1024:.2f} MB).")
+    # ── Upload with SSL retry ──────────────────────────────────────────────────
+    video_file = None
+    last_upload_err = None
+    for upload_attempt in range(3):
+        try:
+            if file_size <= BYTESIO_THRESHOLD:
+                with open(video_path, "rb") as f:
+                    upload_source = io.BytesIO(f.read())
+                logger.info(f"BytesIO upload path ({file_size / 1024 / 1024:.2f} MB), attempt {upload_attempt + 1}.")
+            else:
+                upload_source = open(video_path, "rb")
+                logger.info(f"Streaming upload path ({file_size / 1024 / 1024:.2f} MB), attempt {upload_attempt + 1}.")
 
-    try:
-        video_file = client.files.upload(
-            file=upload_source,
-            config=types.UploadFileConfig(
-                mime_type=mime_type,
-                display_name=display_name,
-            )
-        )
-    finally:
-        if not isinstance(upload_source, io.BytesIO):
-            upload_source.close()
+            try:
+                video_file = client.files.upload(
+                    file=upload_source,
+                    config=types.UploadFileConfig(
+                        mime_type=mime_type,
+                        display_name=display_name,
+                    )
+                )
+            finally:
+                if not isinstance(upload_source, io.BytesIO):
+                    upload_source.close()
+
+            last_upload_err = None
+            break  # success
+
+        except Exception as e:
+            last_upload_err = e
+            err_str = str(e).lower()
+            # Retry only on transient network/SSL errors
+            is_transient = any(kw in err_str for kw in [
+                "ssl", "eof", "connection", "timeout", "reset", "broken pipe",
+                "unexpected_eof", "connecterror", "networkerror",
+            ])
+            if is_transient and upload_attempt < 2:
+                wait = (upload_attempt + 1) * 3  # 3s, 6s
+                logger.warning(
+                    f"Transient upload error (attempt {upload_attempt + 1}/3): {e}. "
+                    f"Retrying in {wait}s..."
+                )
+                time.sleep(wait)
+            else:
+                raise  # non-transient or out of retries
+
+    if video_file is None:
+        raise Exception(f"Upload failed after 3 attempts: {last_upload_err}")
 
     # Poll until not PROCESSING
     max_wait = 180
@@ -166,7 +197,11 @@ class CaptionGenerator:
         pass  # No client at init — always read fresh for Vercel serverless
 
     def _get_client(self):
-        """Reads API key fresh on every call — required for Vercel serverless env vars."""
+        """
+        Reads API key fresh on every call — required for Vercel serverless env vars.
+        Uses a custom httpx client with SSL workarounds for Python 3.13 on Windows
+        where TLS connections to Google APIs can drop with UNEXPECTED_EOF_WHILE_READING.
+        """
         api_key = (
             os.environ.get("GEMINI_API_KEY")
             or os.environ.get("GOOGLE_API_KEY")
@@ -177,7 +212,24 @@ class CaptionGenerator:
                 "No GEMINI_API_KEY found. Go to Vercel → Project → Settings → "
                 "Environment Variables, add GEMINI_API_KEY, then Redeploy."
             )
-        return genai.Client(api_key=api_key)
+
+        # Build a custom httpx client that tolerates TLS EOF on Windows/Python 3.13
+        try:
+            import ssl
+            import httpx
+
+            ssl_ctx = ssl.create_default_context()
+            # Allow legacy TLS renegotiation — fixes UNEXPECTED_EOF on some Windows setups
+            ssl_ctx.options |= getattr(ssl, "OP_LEGACY_SERVER_CONNECT", 0)
+
+            http_client = httpx.Client(
+                verify=ssl_ctx,
+                timeout=httpx.Timeout(120.0, connect=30.0),
+            )
+            return genai.Client(api_key=api_key, http_client=http_client)
+        except Exception:
+            # If custom client fails for any reason, fall back to default
+            return genai.Client(api_key=api_key)
 
     def generate_base_caption(self, video_path: str) -> str:
         """

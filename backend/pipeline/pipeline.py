@@ -1,4 +1,5 @@
 import os
+import time
 import logging
 from typing import Dict, Any, List
 from .caption_generator import CaptionGenerator
@@ -34,7 +35,13 @@ class CaptionForgePipeline:
         captions = {}
         evaluations = {}
 
-        for style in styles:
+        for i, style in enumerate(styles):
+            # Space out calls by 13s when Fireworks is unavailable and Gemini free
+            # tier (5 RPM) is the fallback. This prevents 429 RESOURCE_EXHAUSTED.
+            # If Fireworks works it's instant — the delay only matters for Gemini fallback.
+            if i > 0:
+                time.sleep(13)
+
             try:
                 styled_text = self.style_transformer.transform(base_caption, style)
                 eval_result = self.critic.evaluate_caption(styled_text, style, [])

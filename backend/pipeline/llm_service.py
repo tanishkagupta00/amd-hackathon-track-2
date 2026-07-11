@@ -33,7 +33,8 @@ class LLMService:
                     api_key=fireworks_api_key
                 )
                 response = fireworks_client.chat.completions.create(
-                    model="accounts/fireworks/models/llama-v3p1-70b-instruct",
+                    # deepseek-v4-pro — confirmed working with this Fireworks API key
+                    model="accounts/fireworks/models/deepseek-v4-pro",
                     messages=[
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": user_prompt}
@@ -43,30 +44,46 @@ class LLMService:
                 )
                 text = response.choices[0].message.content.strip()
                 if text:
-                    logger.info("Generated text via Fireworks AI (Llama 3.1 70B).")
+                    logger.info("Generated text via Fireworks AI (Llama 3 70B).")
                     return text
             except Exception as e:
                 logger.warning(f"Fireworks AI call failed: {e}. Falling back to Gemini...")
 
         # Fallback to Gemini
         if gemini_api_key:
-            try:
-                gemini_client = genai.Client(api_key=gemini_api_key)
-                response = gemini_client.models.generate_content(
-                    model='gemini-2.5-flash',
-                    contents=user_prompt,
-                    config=types.GenerateContentConfig(
-                        system_instruction=system_prompt,
-                        temperature=0.75,
-                        max_output_tokens=800
+            gemini_client = genai.Client(api_key=gemini_api_key)
+            # gemini-2.0-flash: 15 RPM free tier (vs 5 RPM for 2.5-flash)
+            # Retry up to 3 times with backoff on 429 RESOURCE_EXHAUSTED
+            last_err = None
+            for attempt in range(3):
+                try:
+                    response = gemini_client.models.generate_content(
+                        model='gemini-2.0-flash',
+                        contents=user_prompt,
+                        config=types.GenerateContentConfig(
+                            system_instruction=system_prompt,
+                            temperature=0.75,
+                            max_output_tokens=800
+                        )
                     )
-                )
-                if response.text:
-                    logger.info("Generated text via Gemini (fallback).")
-                    return response.text.strip()
-            except Exception as e:
-                logger.error(f"Gemini text generation also failed: {e}")
-                raise Exception(f"Both Fireworks and Gemini failed. Last error: {e}")
+                    if response.text:
+                        logger.info(f"Generated text via Gemini (attempt {attempt + 1}).")
+                        return response.text.strip()
+                except Exception as e:
+                    last_err = e
+                    err_str = str(e)
+                    if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
+                        # Parse retry delay from error if available, default to 30s
+                        import re, time
+                        delay_match = re.search(r'retryDelay.*?(\d+)s', err_str)
+                        wait = int(delay_match.group(1)) + 2 if delay_match else 32
+                        logger.warning(f"Gemini 429 on attempt {attempt + 1}. Waiting {wait}s...")
+                        time.sleep(wait)
+                    else:
+                        # Non-rate-limit error — don't retry
+                        logger.error(f"Gemini text generation failed: {e}")
+                        raise Exception(f"Both Fireworks and Gemini failed. Last error: {e}")
+            raise Exception(f"Gemini rate limit exceeded after 3 retries. Last error: {last_err}")
 
         raise Exception(
             "No valid API keys configured. "
