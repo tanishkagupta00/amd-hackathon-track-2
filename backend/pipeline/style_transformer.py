@@ -39,7 +39,8 @@ class StyleTransformer:
         user_content = (
             f"Input Style: {style_prompt}\n"
             f"Input Description: {base_caption}\n\n"
-            "Output the final translated text directly. NO reasoning, NO analysis, NO introductory text. Just the 1-2 sentence translation."
+            "Rewrite the input description into the target style as a full, catchy 3-4 sentence paragraph. "
+            "Output the final translated text directly. NO reasoning, NO analysis, NO introductory text."
         )
         
         return system_content, user_content
