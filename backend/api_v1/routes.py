@@ -172,39 +172,133 @@ def run_pipeline_job(video_id: str, video_path: str, db_session_factory):
 
 @router.post("/captions/generate")
 def generate_captions(
-    req: CaptionGenerationRequest, 
-    background_tasks: BackgroundTasks, 
+    req: CaptionGenerationRequest,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ):
-    record = db.query(VideoRecord).filter(VideoRecord.id == req.video_id).first()
-    if not record:
-        raise HTTPException(status_code=404, detail="Video record not found.")
+    """
+    Self-contained caption generation for Vercel serverless.
 
-    ext = os.path.splitext(record.filename)[1]
-    video_path = os.path.join(settings.STORAGE_DIR, f"{req.video_id}{ext}")
+    Vercel runs each function invocation in an isolated container with an ephemeral /tmp.
+    The DB record and video file written during /videos/url upload live in one container's
+    /tmp and are GONE by the time this endpoint runs in a different container.
 
-    if not os.path.exists(video_path):
-        raise HTTPException(status_code=404, detail="Video source file missing from storage.")
+    Fix: when video_url is provided in the request body we bypass the DB lookup entirely —
+    we download the video fresh, run the pipeline, and return the result directly.
+    The DB is used only when running locally or on a persistent server where /tmp survives.
+    """
+    import tempfile
 
-    record.status = "queued"
-    record.logs = ""
-    record.append_log("Started video processing task.")
-    db.commit()
+    video_path = None
+    tmp_dir = None
+    record = None
 
-    # Synchronous execution for Vercel Serverless Function compatibility
-    from database import SessionLocal
-    run_pipeline_job(req.video_id, video_path, SessionLocal)
+    try:
+        # ── Path A: video_url provided — fully self-contained, no DB needed ──
+        if req.video_url:
+            logger.info(f"Self-contained mode: downloading video from URL for task {req.video_id}")
 
-    db.refresh(record)
-    if record.status == "failed":
-        raise HTTPException(status_code=500, detail=record.logs)
+            tmp_dir = tempfile.mkdtemp(prefix="captionforge_gen_")
+            # Derive filename from video_id + extension from the URL
+            url_path = req.video_url.split("?")[0]  # strip query params
+            ext = os.path.splitext(url_path)[1].lower() or ".mp4"
+            video_path = os.path.join(tmp_dir, f"{req.video_id}{ext}")
 
-    return {
-        "status": "completed", 
-        "video_id": req.video_id,
-        "captions": record.get_captions(),
-        "evaluations": record.get_evaluations()
-    }
+            headers = {
+                "User-Agent": "Mozilla/5.0 (compatible; CaptionForge/1.0)",
+                "Accept": "*/*",
+            }
+            last_error = None
+            for attempt in range(3):
+                try:
+                    with requests.get(
+                        req.video_url, stream=True, timeout=90,
+                        headers=headers, allow_redirects=True
+                    ) as r:
+                        r.raise_for_status()
+                        content_type = r.headers.get("Content-Type", "")
+                        if "text/html" in content_type:
+                            raise Exception(
+                                "The video URL returned an HTML page — the tmpfiles.org "
+                                "link likely expired. Please re-upload the video."
+                            )
+                        with open(video_path, "wb") as f:
+                            for chunk in r.iter_content(chunk_size=65536):
+                                if chunk:
+                                    f.write(chunk)
+
+                    file_size = os.path.getsize(video_path)
+                    logger.info(f"Downloaded {file_size / 1024:.1f} KB to {video_path}")
+                    if file_size < 10_000:
+                        raise Exception(
+                            f"Downloaded file is only {file_size} bytes — "
+                            "link expired or returned an error page. Please re-upload."
+                        )
+                    last_error = None
+                    break
+                except Exception as e:
+                    last_error = e
+                    logger.warning(f"Download attempt {attempt + 1}/3 failed: {e}")
+                    if attempt < 2:
+                        import time; time.sleep(2)
+
+            if last_error:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Failed to download video after 3 attempts: {str(last_error)}"
+                )
+
+            # Run pipeline directly — no DB record needed
+            res = pipeline.process_video(video_path)
+            return {
+                "status": "completed",
+                "video_id": req.video_id,
+                "captions": res["captions"],
+                "evaluations": res["evaluations"],
+            }
+
+        # ── Path B: no video_url — try DB lookup (local / persistent server) ──
+        record = db.query(VideoRecord).filter(VideoRecord.id == req.video_id).first()
+        if not record:
+            raise HTTPException(
+                status_code=404,
+                detail=(
+                    "Video record not found. This usually means the upload and generate "
+                    "calls ran on different Vercel containers. Make sure the frontend "
+                    "sends video_url in the generate request body."
+                )
+            )
+
+        ext = os.path.splitext(record.filename)[1]
+        video_path = os.path.join(settings.STORAGE_DIR, f"{req.video_id}{ext}")
+
+        if not os.path.exists(video_path):
+            raise HTTPException(status_code=404, detail="Video source file missing from storage.")
+
+        record.status = "queued"
+        record.logs = ""
+        record.append_log("Started video processing task.")
+        db.commit()
+
+        from database import SessionLocal
+        run_pipeline_job(req.video_id, video_path, SessionLocal)
+
+        db.refresh(record)
+        if record.status == "failed":
+            raise HTTPException(status_code=500, detail=record.logs)
+
+        return {
+            "status": "completed",
+            "video_id": req.video_id,
+            "captions": record.get_captions(),
+            "evaluations": record.get_evaluations(),
+        }
+
+    finally:
+        # Clean up the temp dir created in Path A
+        if tmp_dir:
+            import shutil as _shutil
+            _shutil.rmtree(tmp_dir, ignore_errors=True)
 
 @router.get("/captions/{id}")
 def get_captions(id: str, db: Session = Depends(get_db)):

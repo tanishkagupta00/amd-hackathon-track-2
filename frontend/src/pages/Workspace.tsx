@@ -10,14 +10,16 @@ import Matrix from '../components/Matrix';
 export default function Workspace() {
   const navigate = useNavigate();
   const [videoId, setVideoId] = useState<string | null>(null);
+  const [videoUrl, setVideoUrl] = useState<string>('');
   const [filename, setFilename] = useState<string>('');
   const [stage, setStage] = useState<'upload' | 'processing' | 'completed'>('upload');
   const [captions, setCaptions] = useState<any>(null);
   const [evaluations, setEvaluations] = useState<any>(null);
 
-  const handleUploadSuccess = (id: string, name: string) => {
+  const handleUploadSuccess = (id: string, name: string, url: string) => {
     setVideoId(id);
     setFilename(name);
+    setVideoUrl(url);
     setStage('processing');
   };
 
@@ -43,6 +45,7 @@ export default function Workspace() {
 
   const handleReset = () => {
     setVideoId(null);
+    setVideoUrl('');
     setFilename('');
     setCaptions(null);
     setEvaluations(null);
@@ -107,6 +110,7 @@ export default function Workspace() {
         {stage === 'processing' && videoId && (
           <Monitor
             videoId={videoId}
+            videoUrl={videoUrl}
             onProcessingComplete={handleProcessingComplete}
           />
         )}

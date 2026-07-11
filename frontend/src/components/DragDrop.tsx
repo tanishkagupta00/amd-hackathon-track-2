@@ -4,7 +4,7 @@ import axios from 'axios';
 import API_BASE_URL from '../apiConfig';
 
 interface DragDropProps {
-  onUploadSuccess: (videoId: string, filename: string) => void;
+  onUploadSuccess: (videoId: string, filename: string, directUrl: string) => void;
 }
 
 function VideoStripIllustration({ active }: { active: boolean }) {
@@ -182,7 +182,10 @@ export default function DragDrop({ onUploadSuccess }: DragDropProps) {
         filename: file.name
       });
 
-      onUploadSuccess(response.data.video_id, response.data.filename);
+      // Pass directUrl up so Workspace can give it to Monitor, which forwards it
+      // to /captions/generate — this makes generation self-contained on Vercel
+      // where each serverless container has its own ephemeral /tmp (no shared DB).
+      onUploadSuccess(response.data.video_id, response.data.filename, directUrl);
     } catch (err: any) {
       if (err.response?.status === 413) {
         setError("Vercel Error: Payload Too Large.");

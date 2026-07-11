@@ -5,6 +5,7 @@ import ParticleOrb from './ParticleOrb';
 
 interface MonitorProps {
   videoId: string;
+  videoUrl?: string;   // tmpfiles.org direct URL — passed straight to /captions/generate
   onProcessingComplete: (videoId: string, captions?: any, evaluations?: any) => void;
 }
 
@@ -41,14 +42,19 @@ function WaveformBar({ delay, active }: { delay: number; active: boolean }) {
   );
 }
 
-export default function Monitor({ videoId, onProcessingComplete }: MonitorProps) {
+export default function Monitor({ videoId, videoUrl, onProcessingComplete }: MonitorProps) {
   const [status, setStatus] = useState<string>('queued');
   const [logs,   setLogs]   = useState<string[]>([]);
   const terminalEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // 1. Initiate blocking synchronous request to the Vercel Serverless Function
-    axios.post('/api/v1/captions/generate', { video_id: videoId })
+    // Build the generate request body.
+    // Always include video_url so /captions/generate can work self-contained on Vercel
+    // (each serverless invocation gets a fresh /tmp — the DB record from upload is gone).
+    const requestBody: Record<string, any> = { video_id: videoId };
+    if (videoUrl) requestBody.video_url = videoUrl;
+
+    axios.post('/api/v1/captions/generate', requestBody)
       .then((res) => {
         // Automatically jump to completed when the synchronous API returns
         setStatus('completed');
