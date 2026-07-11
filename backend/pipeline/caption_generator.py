@@ -1,3 +1,4 @@
+import io
 import os
 import time
 import logging
@@ -52,8 +53,14 @@ class CaptionGenerator:
         logger.info(f"Uploading as {mime_type}: {os.path.basename(video_path)}")
 
         try:
+            # Read file into memory as BytesIO — bypasses the SDK's imageio-ffmpeg
+            # video-probing codepath that fires when a plain string path is passed.
+            # This is the fix for: ModuleNotFoundError: No module named 'imageio_ffmpeg'
+            with open(video_path, "rb") as f:
+                video_bytes = f.read()
+
             video_file = client.files.upload(
-                file=video_path,
+                file=io.BytesIO(video_bytes),
                 config=types.UploadFileConfig(
                     mime_type=mime_type,
                     display_name="captionforge_video"
