@@ -145,7 +145,7 @@ export default function TextGalaxy({
     <div className="text-galaxy-container" ref={containerRef}>
       {nodes.map(p => (
         <div key={p.id} className="text-galaxy-particle">
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-ai-indigo to-ai-cyan font-bold tracking-wider text-xs sm:text-sm uppercase">
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-ai-gold to-ai-goldLight font-bold tracking-wider text-xs sm:text-sm uppercase">
             {p.text}
           </span>
         </div>
