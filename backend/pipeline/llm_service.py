@@ -13,10 +13,12 @@ class LLMService:
 
     def generate_text(self, system_prompt: str, user_prompt: str) -> str:
         """
-        Generates text using Fireworks AI (Llama 3.1 70B) first.
-        Falls back to Gemini 2.5 Flash if Fireworks fails or key is missing.
-        Raises an exception if both fail.
+        Generates text using Fireworks AI first, falls back to Gemini.
+        Returns the generated text.
+        Sets self.last_provider = 'fireworks' | 'gemini' so callers can
+        decide whether to throttle subsequent calls.
         """
+        self.last_provider = None
         # Always read fresh from env — critical for Vercel serverless
         fireworks_api_key = os.environ.get("FIREWORKS_API_KEY")
         gemini_api_key = (
@@ -44,7 +46,8 @@ class LLMService:
                 )
                 text = response.choices[0].message.content.strip()
                 if text:
-                    logger.info("Generated text via Fireworks AI (Llama 3 70B).")
+                    logger.info("Generated text via Fireworks AI (deepseek-v4-pro).")
+                    self.last_provider = "fireworks"
                     return text
             except Exception as e:
                 logger.warning(f"Fireworks AI call failed: {e}. Falling back to Gemini...")
@@ -68,6 +71,7 @@ class LLMService:
                     )
                     if response.text:
                         logger.info(f"Generated text via Gemini (attempt {attempt + 1}).")
+                        self.last_provider = "gemini"
                         return response.text.strip()
                 except Exception as e:
                     last_err = e

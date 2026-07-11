@@ -20,7 +20,7 @@ const STATUS_LABEL: Record<string, string> = {
   queued:       'Queued — waiting for worker slot',
   uploading:    'Uploading — transferring video context to Gemini AI',
   analyzing:    'Analyzing — watching entire video and extracting facts',
-  generating:   'Styling — running parallel style transformers (Fireworks)',
+  generating:   'Styling — running parallel style transformers (DeepSeek / Gemini)',
   completed:    'Complete — all captions generated successfully',
   failed:       'Failed — check execution log for details',
 };
