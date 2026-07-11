@@ -39,6 +39,13 @@ MIME_MAP = {
 # Formats that Gemini natively handles reliably without re-encoding
 GEMINI_NATIVE = {".mp4", ".mov", ".avi", ".webm", ".3gp", ".mpg", ".mpeg", ".m4v"}
 
+# Model cascade: try each in order when quota is exhausted
+GEMINI_MODELS = [
+    "gemini-2.5-flash",
+    "gemini-1.5-flash",
+    "gemini-1.5-flash-8b",
+]
+
 
 def _get_ffmpeg_binary() -> str | None:
     """
@@ -314,20 +321,46 @@ class CaptionGenerator:
                 "Output ONLY the factual description. No headers, bullets, or reasoning."
             )
 
-            response = client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=[video_file, prompt],
-                config=types.GenerateContentConfig(temperature=0.2, max_output_tokens=600),
-            )
+            # Try each model in cascade — fall back on 429/quota errors
+            last_model_error = None
+            for model in GEMINI_MODELS:
+                try:
+                    logger.info(f"Generating caption with {model}...")
+                    response = client.models.generate_content(
+                        model=model,
+                        contents=[video_file, prompt],
+                        config=types.GenerateContentConfig(temperature=0.2, max_output_tokens=600),
+                    )
+                    try:
+                        client.files.delete(name=video_file.name)
+                    except Exception:
+                        pass
+                    caption = response.text.strip()
+                    logger.info(f"[{model}] Caption: {caption[:80]}...")
+                    return caption
+                except Exception as me:
+                    err_str = str(me)
+                    if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "quota" in err_str.lower():
+                        logger.warning(f"[{model}] Quota exhausted, trying next model...")
+                        last_model_error = me
+                        continue
+                    # Non-quota error — bubble up immediately
+                    try:
+                        client.files.delete(name=video_file.name)
+                    except Exception:
+                        pass
+                    raise
 
+            # All models exhausted quota
             try:
                 client.files.delete(name=video_file.name)
             except Exception:
                 pass
-
-            caption = response.text.strip()
-            logger.info(f"Caption generated: {caption[:80]}...")
-            return caption
+            raise Exception(
+                "All Gemini models have hit their daily free-tier quota (20 req/day). "
+                "Please update GEMINI_API_KEY in Vercel Settings with a fresh key from "
+                "https://aistudio.google.com/app/apikey"
+            )
 
         except Exception as e:
             logger.error(f"Caption generation failed: {e}")
