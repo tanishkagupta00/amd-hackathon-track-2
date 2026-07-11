@@ -1,6 +1,9 @@
-# CaptionForge AI
+# 🎬 CaptionForge AI
 
-CaptionForge AI is an AI-powered video captioning platform built for Track 2 (Video Captioning Agent) of the AMD Developer Hackathon. It uses a modular **Extract-Reason-Style** multi-stage AI pipeline to analyze videos and generate captions in four distinct styles:
+**CaptionForge AI** is a robust, hardware-accelerated video captioning platform engineered exclusively for **Track 2 (Video Captioning Agent)** of the **AMD Developer Hackathon**. 
+
+We tackle the challenge of intelligent video understanding by utilizing a highly modular **Extract-Reason-Style** pipeline. The system processes videos using AMD GPU-accelerated local visual encoding, reasons about the content, and dynamically restyles the output into four bespoke target styles:
+
 - **Formal**: Objective, professional, third-person reports.
 - **Sarcastic**: Dry, ironic, and mocking commentary.
 - **Humorous-Tech**: Software engineering and hardware metaphors.
@@ -8,73 +11,64 @@ CaptionForge AI is an AI-powered video captioning platform built for Track 2 (Vi
 
 ---
 
-## Features
+## ✨ Key Features for Judges
 
-- **Decoupled AI Pipeline**: Video preprocessing, motion-aware keyframe sampling, scene detection, visual analysis, temporal reasoning, styled generation, and quality feedback loops.
-- **Headless Runner CLI**: Non-interactive execution reading tasks from `/input/tasks.json` and writing results to `/output/results.json`.
-- **FastAPI Backend REST Server**: High-performance HTTP server with endpoints for video ingestion, real-time log tracking, generation, and quality evaluation.
-- **React Frontend Dashboard**: Premium, modern dashboard with drag-and-drop video upload, real-time visual pipeline monitor, and side-by-side comparative styled caption matrix.
-- **Local Dev Resilience**: Automatically routes uploads, database, and keyframes to the system `TEMP` directory on Windows to bypass OneDrive path lock policies.
-
----
-
-## Project Structure
-
-```text
-├── backend/
-│   ├── api/            # API Router endpoints
-│   ├── core/           # Configuration settings
-│   ├── pipeline/       # Multi-stage Extract-Reason-Style pipeline
-│   ├── schemas/        # Request/Response schemas (Pydantic validation)
-│   ├── database.py     # SQLite history persistence (SQLAlchemy)
-│   ├── main.py         # FastAPI App Entrypoint
-│   └── runner.py       # Headless CLI Runner
-├── frontend/           # React + Vite + Tailwind CSS dashboard
-├── Dockerfile          # Multi-stage container compilation
-├── entrypoint.sh       # Container entrypoint script
-├── requirements.txt    # Python dependencies
-└── README.md           # Setup manual
-```
+* **AMD Hardware Acceleration**: Core visual context extraction and video frame sampling run entirely locally, fully utilizing AMD GPU architecture via PyTorch and OpenCLIP (`ViT-B-32`).
+* **Resilient AI Fallback Architecture**: A custom `LLMService` handles styling and reasoning, intelligently failing over from Fireworks AI to Google Gemini to ensure 100% uptime even if primary API credits deplete.
+* **Premium User Experience**: A breathtaking, responsive React frontend featuring GSAP-powered scroll animations, smooth morphing transitions, and an elegant Obsidian/AI-Gold dark theme.
+* **Dual Execution Modes**: 
+  - **Headless CLI Runner**: Automated, non-interactive execution reading from `tasks.json` to write compliance-checked outputs for batch judge evaluation.
+  - **Interactive Dashboard**: Real-time visual pipeline monitoring and side-by-side comparative styled caption matrix.
+* **Deployment Flexibility**: Designed to run seamlessly on AMD Cloud GPU Jupyter environments while remaining perfectly compatible with Vercel serverless deployments.
 
 ---
 
-## Installation & Setup
+## 🛠️ Technology Stack
+
+**Frontend**
+* **Framework:** React 18, Vite, TypeScript
+* **Styling & UI:** Tailwind CSS, Vanilla CSS, Lucide React (Icons)
+* **Animation:** GSAP (ScrollTrigger, Custom Vanilla Text Splitters)
+
+**Backend & Pipeline**
+* **Framework:** FastAPI (Python 3.10+), SQLAlchemy (SQLite)
+* **Vision Processing (AMD Local):** `torch`, `open_clip_torch`, `opencv-python`, `Pillow`
+* **LLM Integration:** `openai` (Fireworks AI compatible), `google-genai`
+* **Resilience:** Custom Exception Handling & Automated Fallback Routing
+
+---
+
+## 🚀 Installation & Setup
 
 ### Prerequisite
 Ensure Python 3.10+ and Node.js v18+ are installed.
 
-### 1. Install Backend Dependencies
+### 1. Configure AMD GPU Backend
+To leverage the AMD Hardware for local visual extraction:
 ```bash
+# Install all required PyTorch, OpenCLIP, and FastAPI dependencies
 pip install -r requirements.txt
-```
 
-### 2. Start the Backend Server
-```bash
+# Start the server (Runs on port 8000)
 python backend/main.py
 ```
-The server will start at `http://localhost:8000`. You can access API documentation at `http://localhost:8000/docs`.
+*API documentation is automatically available at `http://localhost:8000/docs`.*
 
-### 3. Install & Start Frontend (Development)
+### 2. Configure React Frontend
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
-The web dashboard will start at `http://localhost:3000`.
-
-### 4. Build Frontend (Production)
-```bash
-cd frontend
-npm run build
-```
-FastAPI will automatically serve the compiled frontend assets directly from `http://localhost:8000/`.
+*The web dashboard will instantly be available at `http://localhost:3000`.*
 
 ---
 
-## Running the Headless CLI Runner
+## 🤖 Running the Headless Evaluation CLI
 
-For evaluation, CaptionForge AI can run in a headless automated mode. Create a `tasks.json` in the root (or map it in Docker to `/input/tasks.json`):
+CaptionForge AI provides a headless automated mode explicitly designed for batch evaluation.
 
+Create a `tasks.json` in the project root:
 ```json
 [
   {
@@ -84,17 +78,8 @@ For evaluation, CaptionForge AI can run in a headless automated mode. Create a `
 ]
 ```
 
-Run the runner:
+**Execute the Runner:**
 ```bash
 python backend/runner.py
 ```
-This will output compliance-checked results to `results.json` (or `/output/results.json` in Docker) conforming to the evaluation schema.
-
----
-
-## Running Unit Tests
-
-Run the test suite using pytest:
-```bash
-pytest backend/tests/
-```
+This will parse the tasks, process the videos through the local AMD-accelerated pipeline, apply the fallback style generation, and output compliance-checked results to `results.json` conforming to the strict evaluation schema.
