@@ -1,11 +1,10 @@
 import React, { useRef, useEffect, useState, useMemo } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { SplitText as GSAPSplitText } from 'gsap/SplitText';
 import { useGSAP } from '@gsap/react';
 import './Shuffle.css';
 
-gsap.registerPlugin(ScrollTrigger, GSAPSplitText, useGSAP);
+gsap.registerPlugin(ScrollTrigger, useGSAP);
 
 const Shuffle = ({
   text,
@@ -19,15 +18,15 @@ const Shuffle = ({
   rootMargin = '-100px',
   tag = 'p',
   textAlign = 'center',
-  onShuffleComplete,
+  onShuffleComplete = undefined,
   shuffleTimes = 1,
   animationMode = 'evenodd',
   loop = false,
   loopDelay = 0,
   stagger = 0.03,
   scrambleCharset = '',
-  colorFrom,
-  colorTo,
+  colorFrom = undefined,
+  colorTo = undefined,
   triggerOnce = true,
   respectReducedMotion = true,
   triggerOnHover = true
@@ -36,11 +35,11 @@ const Shuffle = ({
   const [fontsLoaded, setFontsLoaded] = useState(false);
   const [ready, setReady] = useState(false);
 
-  const splitRef = useRef(null);
   const wrappersRef = useRef([]);
   const tlRef = useRef(null);
   const playingRef = useRef(false);
   const hoverHandlerRef = useRef(null);
+  const originalHtmlRef = useRef("");
 
   useEffect(() => {
     if ('fonts' in document) {
@@ -91,28 +90,51 @@ const Shuffle = ({
           });
           wrappersRef.current = [];
         }
-        try {
-          splitRef.current?.revert();
-        } catch {
-          /* noop */
+        
+        // Restore original HTML if we did manual splitting
+        if (originalHtmlRef.current) {
+            el.innerHTML = originalHtmlRef.current;
         }
-        splitRef.current = null;
+        
         playingRef.current = false;
       };
 
       const build = () => {
         teardown();
 
-        splitRef.current = new GSAPSplitText(el, {
-          type: 'chars',
-          charsClass: 'shuffle-char',
-          wordsClass: 'shuffle-word',
-          linesClass: 'shuffle-line',
-          smartWrap: true,
-          reduceWhiteSpace: false
+        // Vanilla JS SplitText alternative
+        originalHtmlRef.current = el.innerHTML;
+        const currentText = el.textContent || text;
+        el.innerHTML = '';
+        const chars = [];
+        
+        const words = currentText.split(' ');
+        words.forEach((word, wordIndex) => {
+            const wordSpan = document.createElement('span');
+            wordSpan.className = 'shuffle-word';
+            wordSpan.style.display = 'inline-block';
+            wordSpan.style.whiteSpace = 'nowrap';
+            
+            word.split('').forEach(char => {
+                const charSpan = document.createElement('span');
+                charSpan.className = 'shuffle-char';
+                charSpan.style.display = 'inline-block';
+                charSpan.textContent = char;
+                wordSpan.appendChild(charSpan);
+                chars.push(charSpan);
+            });
+            
+            el.appendChild(wordSpan);
+            
+            if (wordIndex < words.length - 1) {
+                const spaceSpan = document.createElement('span');
+                spaceSpan.className = 'shuffle-char';
+                spaceSpan.style.display = 'inline-block';
+                spaceSpan.innerHTML = '&nbsp;';
+                el.appendChild(spaceSpan);
+                chars.push(spaceSpan);
+            }
         });
-
-        const chars = splitRef.current.chars || [];
         wrappersRef.current = [];
 
         const rolls = Math.max(1, Math.floor(shuffleTimes));
