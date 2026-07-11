@@ -22,19 +22,29 @@ MIME_MAP = {
 
 class CaptionGenerator:
     def __init__(self):
-        self.api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
-        self.client = genai.Client(api_key=self.api_key) if self.api_key else None
+        pass  # No client at init — always read fresh to handle Vercel env vars
+
+    def _get_client(self):
+        """Always reads the API key fresh on every call — required for Vercel serverless."""
+        api_key = (
+            os.environ.get("GEMINI_API_KEY")
+            or os.environ.get("GOOGLE_API_KEY")
+            or os.environ.get("GOOGLE_GEMINI_KEY")
+        )
+        if not api_key:
+            raise Exception(
+                "No GEMINI_API_KEY found. Go to Vercel → Project → Settings → "
+                "Environment Variables, add GEMINI_API_KEY with your Google AI Studio key, "
+                "then click Redeploy."
+            )
+        return genai.Client(api_key=api_key)
 
     def generate_base_caption(self, video_path: str) -> str:
         """
-        Vercel Serverless environment strictly limits execution to 250MB size and lacks system binaries (like FFmpeg).
-        Therefore, we rely 100% on the Gemini File API.
-        Local frame extraction (OpenCV, PyAV, imageio-ffmpeg) is impossible on Vercel.
+        Uses Gemini File API exclusively — no local FFmpeg or OpenCV needed.
+        Works on Vercel serverless.
         """
-        if not self.client:
-            raise Exception(
-                "No GEMINI_API_KEY configured. Add it to Vercel → Settings → Environment Variables."
-            )
+        client = self._get_client()  # Fresh client with fresh API key every request
 
         ext = os.path.splitext(video_path)[1].lower()
         mime_type = MIME_MAP.get(ext, "video/mp4")
@@ -42,7 +52,7 @@ class CaptionGenerator:
         logger.info(f"Uploading as {mime_type}: {os.path.basename(video_path)}")
 
         try:
-            video_file = self.client.files.upload(
+            video_file = client.files.upload(
                 file=video_path,
                 config=types.UploadFileConfig(
                     mime_type=mime_type,
@@ -57,12 +67,12 @@ class CaptionGenerator:
                     raise Exception(f"File API timed out after {max_wait}s.")
                 time.sleep(4)
                 waited += 4
-                video_file = self.client.files.get(name=video_file.name)
+                video_file = client.files.get(name=video_file.name)
                 logger.info(f"  [{waited}s] state={video_file.state.name}")
 
             if video_file.state.name == "FAILED":
                 try:
-                    self.client.files.delete(name=video_file.name)
+                    client.files.delete(name=video_file.name)
                 except Exception:
                     pass
                 raise Exception(f"Gemini rejected this video format ({mime_type}). Please upload a standard MP4 (H.264).")
@@ -80,14 +90,14 @@ class CaptionGenerator:
                 "Output ONLY the factual description. No headers, bullets, or reasoning."
             )
 
-            response = self.client.models.generate_content(
+            response = client.models.generate_content(
                 model="gemini-2.5-flash",
                 contents=[video_file, prompt],
                 config=types.GenerateContentConfig(temperature=0.2, max_output_tokens=600),
             )
-            
+
             try:
-                self.client.files.delete(name=video_file.name)
+                client.files.delete(name=video_file.name)
             except Exception:
                 pass
 
