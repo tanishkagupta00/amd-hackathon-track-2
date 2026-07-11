@@ -116,7 +116,7 @@ export default function Home() {
               <Shuffle 
                 tag="span"
                 text="Generated with Style." 
-                className="hero-title inline-block" 
+                className="text-ai-gold inline-block" 
                 duration={1.5}
                 stagger={0.08}
                 ease="power3.out"
