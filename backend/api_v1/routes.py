@@ -1,6 +1,7 @@
 import os
 import uuid
 import shutil
+import logging
 from fastapi import APIRouter, Depends, UploadFile, File, BackgroundTasks, HTTPException
 from sqlalchemy.orm import Session
 from typing import List, Dict, Any
@@ -19,15 +20,17 @@ from pipeline.pipeline import CaptionForgePipeline
 from pipeline.caption_critic import CaptionCritic
 
 router = APIRouter()
+logger = logging.getLogger("captionforge.routes")
 pipeline = CaptionForgePipeline()
 critic = CaptionCritic()
 
 @router.post("/videos", response_model=VideoUploadResponse)
 def upload_video(file: UploadFile = File(...), db: Session = Depends(get_db)):
     # Validate file extension
+    ALLOWED = {".mp4", ".mov", ".avi", ".webm", ".mkv", ".m4v", ".3gp", ".mpeg", ".mpg"}
     ext = os.path.splitext(file.filename)[1].lower()
-    if ext not in [".mp4", ".mov", ".avi"]:
-        raise HTTPException(status_code=400, detail="Unsupported video format. Must be MP4, MOV, or AVI.")
+    if ext not in ALLOWED:
+        raise HTTPException(status_code=400, detail=f"Unsupported video format '{ext}'. Please upload MP4, MOV, AVI, WebM, or MKV.")
 
     video_id = str(uuid.uuid4())
     filename = f"{video_id}{ext}"
@@ -58,23 +61,37 @@ def upload_video(file: UploadFile = File(...), db: Session = Depends(get_db)):
 @router.post("/videos/url", response_model=VideoUploadResponse)
 def upload_video_from_url(req: VideoUrlUploadRequest, db: Session = Depends(get_db)):
     # Validate file extension
+    ALLOWED = {".mp4", ".mov", ".avi", ".webm", ".mkv", ".m4v", ".3gp", ".mpeg", ".mpg"}
     ext = os.path.splitext(req.filename)[1].lower()
-    if ext not in [".mp4", ".mov", ".avi"]:
-        raise HTTPException(status_code=400, detail="Unsupported video format. Must be MP4, MOV, or AVI.")
+    if ext not in ALLOWED:
+        raise HTTPException(status_code=400, detail=f"Unsupported video format '{ext}'. Please upload MP4, MOV, AVI, WebM, or MKV.")
 
     video_id = str(uuid.uuid4())
     filename = f"{video_id}{ext}"
     dest_path = os.path.join(settings.STORAGE_DIR, filename)
 
-    try:
-        # Download the file from the URL directly to the ephemeral storage
-        with requests.get(req.url, stream=True, timeout=30) as r:
-            r.raise_for_status()
-            with open(dest_path, "wb") as f:
-                for chunk in r.iter_content(chunk_size=8192):
-                    f.write(chunk)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to download video from URL: {str(e)}")
+    headers = {
+        "User-Agent": "Mozilla/5.0 (compatible; CaptionForge/1.0)",
+        "Accept": "*/*",
+    }
+    last_error = None
+    for attempt in range(3):  # 3 attempts for flaky hosts like tmpfiles.org
+        try:
+            with requests.get(req.url, stream=True, timeout=90, headers=headers, allow_redirects=True) as r:
+                r.raise_for_status()
+                with open(dest_path, "wb") as f:
+                    for chunk in r.iter_content(chunk_size=65536):
+                        if chunk:
+                            f.write(chunk)
+            last_error = None
+            break  # success
+        except Exception as e:
+            last_error = e
+            logger.warning(f"Download attempt {attempt+1}/3 failed: {e}")
+            if attempt < 2:
+                import time; time.sleep(2)
+    if last_error:
+        raise HTTPException(status_code=500, detail=f"Failed to download video from URL after 3 attempts: {str(last_error)}")
 
     # Create DB record
     record = VideoRecord(
