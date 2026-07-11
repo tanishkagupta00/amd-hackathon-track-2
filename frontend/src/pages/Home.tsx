@@ -100,12 +100,12 @@ export default function Home() {
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full
               bg-ai-gold/5 border border-ai-gold/25 text-sm text-ai-accent backdrop-blur-[10px]">
               <span className="h-2 w-2 rounded-full bg-ai-gold animate-pulse" />
-              <Shuffle text="AMD Developer Hackathon · Track 2" />
+              <span>AMD Developer Hackathon · Track 2</span>
             </div>
 
             {/* H1 */}
             <h1 className="text-5xl md:text-7xl font-bold tracking-tight leading-[1.08] font-display">
-              Intelligent Video Captions,{' '}
+              <Shuffle text="Intelligent Video Captions," className="inline-block" />{' '}
               <br className="hidden md:block" />
               <span className="hero-title">
                 Generated with Style.
