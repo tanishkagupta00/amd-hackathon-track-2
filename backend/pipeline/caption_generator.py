@@ -32,42 +32,52 @@ class CaptionGenerator:
             return llm.generate_text("You are a strict, objective video captioner. Output ONLY the final factual caption.", fallback_prompt).strip()
         
         try:
-            # 2. Try Gemini Video File API for deep temporal understanding
-            video_file = self.client.files.upload(file=video_path)
+            # 2. Extract frames locally using OpenCV to pass directly to Gemini (bypassing slow File API)
+            import cv2
+            from PIL import Image
             
-            while video_file.state.name == "PROCESSING":
-                time.sleep(2)
-                video_file = self.client.files.get(name=video_file.name)
-            
-            if video_file.state.name == "FAILED":
-                raise Exception("Gemini File API returned FAILED state.")
+            cap = cv2.VideoCapture(video_path)
+            frames = []
+            if cap.isOpened():
+                frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+                if frame_count > 0:
+                    # Extract 8 evenly spaced frames to represent the video
+                    num_frames = min(8, frame_count)
+                    indices = [int(i * frame_count / num_frames) for i in range(num_frames)]
+                    for idx in indices:
+                        cap.set(cv2.CAP_PROP_POS_FRAMES, idx)
+                        ret, frame = cap.read()
+                        if ret:
+                            # Resize to 640x360 to save bandwidth/tokens
+                            frame = cv2.resize(frame, (640, 360))
+                            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                            pil_img = Image.fromarray(rgb_frame)
+                            frames.append(pil_img)
+            cap.release()
+
+            if not frames:
+                raise Exception("Failed to extract any frames from the video.")
 
             prompt = f"""
-Visual context extracted locally using AMD GPU:
+Visual context extracted locally: {visual_context}
 
-{visual_context}
+Attached are evenly spaced frames extracted from the video.
+Watch the video frames carefully and analyze the temporal sequence.
 
-Now watch the ENTIRE video carefully.
+Generate a comprehensive, catchy paragraph describing what is happening in the video.
+Include actions, setting, objects, and overall mood.
 
-Generate a factual description including:
-
-- actions
-- setting
-- objects
-- emotions
-- speech
+Output ONLY the catchy paragraph (3-4 sentences). Do not include any reasoning, thoughts, or introductory text.
 """
+            
+            # Pass frames and prompt inline to avoid File API timeout
+            contents = frames + [prompt]
             
             response = self.client.models.generate_content(
                 model='gemini-2.5-flash',
-                contents=[video_file, prompt]
+                contents=contents
             )
             
-            try:
-                self.client.files.delete(name=video_file.name)
-            except:
-                pass
-                
             return response.text.strip()
             
         except Exception as e:
@@ -75,7 +85,7 @@ Generate a factual description including:
             print(f"Gemini Video API failed ({e}). Falling back to local AMD visual context and LLMService.")
             
             if visual_context == "Local vision extraction skipped.":
-                return "A generic video showing a sequence of events. A person or object is interacting with the environment."
+                return f"A generic video showing a sequence of events. (Debug Info: {str(e)})"
                 
             from .llm_service import LLMService
             llm = LLMService()
