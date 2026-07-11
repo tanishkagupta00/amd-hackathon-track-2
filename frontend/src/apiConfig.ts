@@ -1,7 +1,8 @@
-// Central API base URL config.
-// Set VITE_API_BASE_URL in Vercel env vars to point to your backend.
-// e.g. https://abc123.ngrok-free.app  OR  https://your-backend.railway.app
-// When running locally with the backend on the same server, leave it empty.
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+/// <reference types="vite/client" />
+
+// Central API base URL — set VITE_API_BASE_URL in Vercel environment variables
+// to point at your backend (e.g. https://your-backend.railway.app).
+// Leave empty when frontend and backend share the same Vercel deployment.
+const API_BASE_URL: string = (import.meta as any).env?.VITE_API_BASE_URL ?? '';
 
 export default API_BASE_URL;
