@@ -1,132 +1,353 @@
+
 # AI Model Architecture
 
 **Project:** CaptionForge AI  
 **Document:** 17_AI_Model_Architecture.md  
-**Version:** 1.0 (Production Blueprint)
+**Version:** 2.0 (Implementation Aligned)
 
 ---
 
 ## 1. Executive Summary
-This document specifies the machine learning and model architecture for **CaptionForge AI**, engineered for Track 2 of the AMD Developer Hackathon. To prevent visual hallucinations and ensure strict adherence to the four mandatory styles (**Formal, Sarcastic, Humorous-Tech, Humorous-Non-Tech**), the system rejects a monolithic end-to-end vision prompt approach. Instead, it uses a decoupled **Extract-Reason-Style** multi-model architecture. This document outlines model selection, feature extraction pipelines, temporal aggregation networks, LLM orchestration, and the style translation framework.
 
-## 2. Model Selection & Compute Framework
-The architecture uses a mixture of localized visual-feature models and remote/local Large Language Models optimized for high structural precision and semantic fluency.
+CaptionForge AI uses a decoupled **Extract-Reason-Style** multi-model architecture. Instead of a monolithic end-to-end approach, the system separates:
+1. **Extraction** - Audio transcription and visual analysis
+2. **Reasoning** - Factual base caption generation
+3. **Styling** - Multi-head style transformation
 
-```text
-ai_pipeline/
-├── models/
-│   ├── vision_extractor.py     # InternVL2 / Qwen2-VL video embeddings wrapper
-│   ├── spatial_detector.py      # Localized object/action tagger (YOLOv10 / InternImage)
-│   ├── temporal_reasoner.py    # Temporal window aggregator and graph builder
-│   ├── caption_generator.py    # Factual base caption constructor
-│   └── style_transformer.py    # Multi-headed stylistic prompt execution engine
-├── prompts/
-│   ├── base_caption.json       # Factual structured consolidation instructions
-│   └── styles/
-│       ├── formal.json         # Objective, professional reporting prompt
-│       ├── sarcastic.json      # Dry, ironic, mocking inflection rules
-│       ├── humorous_tech.json  # Programming and computer science joke injections
-│       └── humorous_non_tech.json # Slapstick, everyday observational wit constraints
-└── pipeline.py                 # Master execution graph orchestrator
-```
-
-### 2.1. Model Selection Matrix
-| Pipeline Component | Selected Model | Scale / Variant | Operational Mode | Justification |
-| :--- | :--- | :--- | :--- | :--- |
-| **Primary Vision Engine** | **Qwen2.5-VL** | 7B / 72B Instruct | Local/API Integration | Elite native temporal understanding, high-resolution visual grounding, robust object/action tagging. |
-| **Spatial Feature Tagger** | **YOLOv10** | Extra Large (XL) | Local Inference (PyTorch) | High-speed, zero-shot bounding-box object classification to feed raw structural verification lists to the pipeline. |
-| **Reasoning & Styling Core** | **Llama-3.3** | 70B Instruct | API Client / Distributed | Industry-leading adherence to system prompts, high vocabulary range for distinct tone shifts. |
-
-## 3. Spatial & Video Feature Extraction Pipeline
-The pipeline processes video input through sequential stages to extract spatial and visual data before generating text captions.
-
-```mermaid
-flowchart LR
-    Video[Raw Video Input] --> Decoder[FFmpeg / OpenCV Frame Decoder]
-    Decoder --> Sampler[Motion-Aware Keyframe Sampler]
-    Sampler --> VLM[Qwen2.5-VL Visual Embedding Layer]
-    Sampler --> YOLO[YOLOv10 Object/Action Tokenizer]
-    VLM --> Aggregator[Temporal Feature Matrix]
-    YOLO --> Aggregator
-```
-
-### 3.1. Sampling and Spatial Feature Ingestion
-1.  **Motion-Aware Sampling:** The system decodes raw video via OpenCV and calculates frame-to-frame pixel differences (optical flow). Frames are skipped during static sequences, while sampling density increases during high-velocity action transitions.
-2.  **Object & Attribute Tokenization:** The sampled frames pass through the localized spatial feature tagger. This stage generates an inventory containing detected objects, relative locations, confidence levels, and active movement vectors.
-
-## 4. Temporal Context & Graph Aggregation
-To avoid text errors caused by analyzing frames out of order, spatial tokens are aggregated into a chronological event graph.
-
-```json
-{
-  "video_metadata": { "duration_seconds": 45.0, "total_sampled_keyframes": 12 },
-  "temporal_graph": [
-    {
-      "scene_id": 1,
-      "timestamp_range": [0.0, 12.4],
-      "environmental_context": "Modern open-plan corporate office, high daylight exposure",
-      "persistent_entities": ["office worker", "desktop computer", "mechanical keyboard"],
-      "action_sequence": ["worker typing intensely", "gazing at compilation errors on screen"]
-    },
-    {
-      "scene_id": 2,
-      "timestamp_range": [12.5, 45.0],
-      "environmental_context": "Office desk layout close-up",
-      "persistent_entities": ["office worker", "coffee mug", "computer mouse"],
-      "action_sequence": ["worker rubbing temples in frustration", "taking a slow sip of cold coffee"]
-    }
-  ]
-}
-```
-
-## 5. Factual Base Caption Generation
-The raw temporal graph passes into the **Caption Planner & Generator** phase. This stage acts as an analytical filter, converting the structured JSON event log into a dense, non-stylized narrative summary.
-
-*   **System Instructions:** Summarize the chronologically mapped entities and action strings into a unified factual paragraph. Avoid adding any humor, metaphors, or speculative assumptions.
-*   **Verification Guardrails:** The engine cross-checks the output against the raw spatial token list to ensure that only verified objects and actions are included in the text narrative.
-
-## 6. Style Transformation Engine
-Once the factual base caption is established, it is routed into the Multi-Headed Style Transformer. This engine runs four parallel LLM sessions using targeted system prompts to transform the baseline text into the required competition output formats.
-
-```mermaid
-flowchart TD
-    Base[Factual Base Caption] --> F_Prompt[Formal Prompt System]
-    Base --> S_Prompt[Sarcastic Prompt System]
-    Base --> HT_Prompt[Humorous-Tech Prompt System]
-    Base --> HNT_Prompt[Humorous-Non-Tech Prompt System]
-
-    F_Prompt --> F_Out[Formal Caption]
-    S_Prompt --> S_Out[Sarcastic Caption]
-    HT_Prompt --> HT_Out[Humorous-Tech Caption]
-    HNT_Prompt --> HNT_Out[Humorous-Non-Tech Caption]
-```
-
-### 6.1. Stylistic Prompt Architectures
-#### **Formal Style Rules**
-*   **Objective:** Produce an objective, professional, and factual report.
-*   **Instruction:** Write in the third person, use passive voice structures for process steps, and prioritize environmental settings and physical actions over emotional interpretations.
-
-#### **Sarcastic Style Rules**
-*   **Objective:** Apply a dry, ironic, and lightly mocking tone to the scene.
-*   **Instruction:** Emphasize monotonous actions, contrast high user effort against trivial results, and use understated irony to comment on the visual performance.
-
-#### **Humorous-Tech Style Rules**
-*   **Objective:** Inject technical, software development, or hardware references.
-*   **Instruction:** Use computing jargon (e.g., merge conflicts, stack overflows, buffer underruns, legacy debt) as metaphors for everyday human situations shown in the video.
-
-#### **Humorous-Non-Tech Style Rules**
-*   **Objective:** Apply standard everyday humor without technical jargon.
-*   **Instruction:** Focus on relatable tropes, observational comedy, hyperbole, and mild situational ironies that a general audience can appreciate.
-
-## 7. Model Execution Guardrails & Hallucination Defense
-To guarantee a top score from the competition's evaluation system, the architecture uses a strict automated feedback mechanism: **The Caption Critic**.
-
-1.  **Semantic Consistency Verification:** The generated style captions are converted back into a simplified entity list using an independent evaluation model layer.
-2.  **Hallucination Check:** If the evaluation layer detects any objects in the final styled captions that were not present in the original structural token inventory, the pipeline flags the caption for hallucination.
-3.  **Automated Regeneration Loop:** Captions that fail the hallucination check are routed back to the style engine with a critique payload for immediate corrections before final export.
-
-## 8. Final Sign-off
-*   **Status:** APPROVED
-*   **Implementation Target:** Track 2 Production Inference Image Container
+This architecture runs on **AMD MI300X GPUs** via Fireworks AI, enabling serverless deployment on Vercel without local GPU requirements.
 
 ---
+
+## 2. Model Selection Matrix
+
+| Component | Model | Provider | Purpose |
+|-----------|-------|----------|---------|
+| Speech-to-Text | **Whisper-v3** | Fireworks AI | Audio transcription |
+| Vision-Language | **Kimi-k2p6** | Fireworks AI | Video understanding |
+| Style Generation | **DeepSeek-v4-pro** | Fireworks AI | Caption rewriting |
+| Fallback 1 | Kimi-k2p6 | Fireworks AI | Alternative LLM |
+| Fallback 2 | GPT-OSS-120B | Fireworks AI | Backup LLM |
+
+---
+
+## 3. Architecture Overview
+
+```
+Video Input
+    ↓
+┌──────────────────────────────────────────────────────────────┐
+│                    EXTRACTION LAYER                           │
+│                                                               │
+│  ┌─────────────┐  ┌──────────────┐  ┌───────────────────┐   │
+│  │ Audio       │  │ Frame        │  │ OpenCV           │   │
+│  │ Extraction  │  │ Sampling     │  │ (optional)       │   │
+│  │ (FFmpeg)    │  │ (imageio)    │  │                  │   │
+│  └──────┬──────┘  └──────┬───────┘  └───────────────────┘   │
+│         │                │                                    │
+│         ▼                ▼                                    │
+│  ┌─────────────┐  ┌──────────────┐                          │
+│  │ Whisper-v3  │  │ Base64       │                          │
+│  │ (Fireworks) │  │ JPEG Frames  │                          │
+│  └──────┬──────┘  └──────┬───────┘                          │
+└─────────┼────────────────┼────────────────────────────────────┘
+          │                │
+          ▼                ▼
+┌──────────────────────────────────────────────────────────────┐
+│                    REASONING LAYER                            │
+│                                                               │
+│  ┌───────────────────────────────────────────────────────┐   │
+│  │ Kimi-k2p6 (Fireworks AI on AMD MI300X)                │   │
+│  │                                                        │   │
+│  │ Input:                                                │   │
+│  │ - 6 keyframes (base64 JPEG)                          │   │
+│  │ - Audio transcript (if available)                     │   │
+│  │ - Structured prompt for factual description           │   │
+│  │                                                        │   │
+│  │ Output:                                               │   │
+│  │ - Factual base caption (3-4 sentences)               │   │
+│  └───────────────────────────────────────────────────────┘   │
+└─────────────────────┬────────────────────────────────────────┘
+                      │
+                      ▼
+┌──────────────────────────────────────────────────────────────┐
+│                    STYLING LAYER                              │
+│                                                               │
+│  ┌───────────┐ ┌───────────┐ ┌───────────┐ ┌──────────────┐ │
+│  │ Formal    │ │ Sarcastic │ │ Humorous  │ │ Humorous     │ │
+│  │ Prompt    │ │ Prompt    │ │ -Tech     │ │ -Non-Tech    │ │
+│  └─────┬─────┘ └─────┬─────┘ └─────┬─────┘ └──────┬───────┘ │
+│        │             │             │              │          │
+│        └─────────────┴─────────────┴──────────────┘          │
+│                            │                                  │
+│                            ▼                                  │
+│  ┌───────────────────────────────────────────────────────┐   │
+│  │ DeepSeek-v4-pro (Fireworks AI)                        │   │
+│  │ - 4 parallel calls (one per style)                   │   │
+│  │ - Fallback to Kimi-k2p6 if rate-limited              │   │
+│  └───────────────────────────────────────────────────────┘   │
+└─────────────────────┬────────────────────────────────────────┘
+                      │
+                      ▼
+┌──────────────────────────────────────────────────────────────┐
+│                    EVALUATION LAYER                           │
+│                                                               │
+│  ┌───────────────────────────────────────────────────────┐   │
+│  │ CaptionCritic (Local Rules Engine)                    │   │
+│  │                                                        │   │
+│  │ Checks:                                               │   │
+│  │ - Hallucination detection                             │   │
+│  │ - Style adherence scoring                             │   │
+│  │ - Accuracy scoring                                    │   │
+│  └───────────────────────────────────────────────────────┘   │
+└──────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 4. Model Details
+
+### 4.1 Whisper-v3 (Speech-to-Text)
+
+**Purpose:** Transcribe audio from video
+
+**Specifications:**
+- **Provider:** Fireworks AI
+- **Model:** `whisper-v3`
+- **Audio Format:** MP3 at 16kHz
+- **Languages:** Multi-language support
+- **Latency:** ~1-3 seconds for typical audio
+
+**Usage:**
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://api.fireworks.ai/inference/v1",
+    api_key=FIREWORKS_API_KEY
+)
+
+with open(audio_path, "rb") as af:
+    transcription = client.audio.transcriptions.create(
+        model="whisper-v3",
+        file=af
+    )
+```
+
+---
+
+### 4.2 Kimi-k2p6 (Vision-Language Model)
+
+**Purpose:** Understand video frames and generate factual description
+
+**Specifications:**
+- **Provider:** Fireworks AI
+- **Model:** `accounts/fireworks/models/kimi-k2p6`
+- **Input:** Up to 6 frames (base64 JPEG) + text prompt
+- **Max Tokens:** 10,000
+- **Temperature:** 0.2 (low for factual accuracy)
+- **Latency:** ~5-15 seconds
+
+**Prompt Structure:**
+```
+System: You are a precise, factual video analysis assistant.
+Output ONLY the final description. No reasoning or headers.
+
+User: Watch this sequence of frames from a video carefully.
+Also consider this audio transcript: "{transcript}"
+
+Write a detailed, factual description:
+- WHO is in the video
+- WHAT specific actions occur
+- WHERE it takes place
+- HOW events unfold over time
+
+Write 3-4 rich, concrete sentences.
+Output ONLY the factual description.
+```
+
+**Reasoning Cleanup:**
+Some models prepend chain-of-thought reasoning. The `clean_kimi_reasoning()` function removes:
+- "The user wants..."
+- "Let me analyze..."
+- "First frame:", "Second frame:", etc.
+- Markdown headers
+
+---
+
+### 4.3 DeepSeek-v4-pro (Style Transformer)
+
+**Purpose:** Rewrite factual caption in required styles
+
+**Specifications:**
+- **Provider:** Fireworks AI
+- **Model:** `accounts/fireworks/models/deepseek-v4-pro`
+- **Max Tokens:** 10,000
+- **Temperature:** 0.75 (higher for creative styles)
+- **Latency:** ~2-5 seconds per style
+
+**Fallback Chain:**
+```python
+models_to_try = [
+    "accounts/fireworks/models/deepseek-v4-pro",   # Primary
+    "accounts/fireworks/models/kimi-k2p6",          # Fallback 1
+    "accounts/fireworks/models/gpt-oss-120b",       # Fallback 2
+]
+```
+
+**Style Prompts:**
+
+| Style | Key Instructions |
+|-------|-----------------|
+| **Formal** | Objective, third-person, passive voice, no humor |
+| **Sarcastic** | Dry irony, mock reverence, dramatic overstatement |
+| **Humorous-Tech** | Programming metaphors, DevOps jargon |
+| **Humorous-Non-Tech** | Everyday comedy, no tech references |
+
+---
+
+## 5. API Integration
+
+### 5.1 Fireworks AI Client
+
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://api.fireworks.ai/inference/v1",
+    api_key=os.environ.get("FIREWORKS_API_KEY")
+)
+```
+
+### 5.2 Vision Call (Multi-Frame)
+
+```python
+messages = [
+    {"role": "system", "content": "You are a precise video analysis assistant..."},
+    {"role": "user", "content": [
+        {"type": "text", "text": prompt},
+        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{frame1}"}},
+        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{frame2}"}},
+        # ... up to 6 frames
+    ]}
+]
+
+response = client.chat.completions.create(
+    model="accounts/fireworks/models/kimi-k2p6",
+    messages=messages,
+    max_tokens=10000,
+    temperature=0.2
+)
+```
+
+### 5.3 Style Generation Call
+
+```python
+response = client.chat.completions.create(
+    model="accounts/fireworks/models/deepseek-v4-pro",
+    messages=[
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt}
+    ],
+    max_tokens=10000,
+    temperature=0.75
+)
+```
+
+---
+
+## 6. CaptionCritic (Local Evaluation)
+
+### 6.1 Purpose
+
+Evaluate generated captions for:
+1. **Hallucination Detection** - Flag non-existent objects
+2. **Style Adherence** - Score how well the style matches
+3. **Accuracy Scoring** - Overall quality metric
+
+### 6.2 Hallucination Detection
+
+**Tech-Only Phrases (Flag in non-tech styles):**
+```python
+TECH_ONLY_PHRASES = [
+    "merge conflict", "null pointer", "stack overflow",
+    "segmentation fault", "deployment pipeline", "pull request",
+    "docker container", "kubernetes", "api endpoint", ...
+]
+```
+
+**Note:** Everyday words like "keyboard", "monitor", "screen" are NOT flagged.
+
+### 6.3 Style Scoring
+
+| Style | Scoring Criteria |
+|-------|-----------------|
+| **Formal** | -0.15 for exclamation marks, -0.15 for first-person pronouns |
+| **Sarcastic** | -0.2 for missing irony markers (behold, wow, truly) |
+| **Humorous-Tech** | -0.3 for no tech references, -0.1 for light references |
+| **Humorous-Non-Tech** | -0.2 for tech-only phrases |
+
+---
+
+## 7. Why Fireworks AI?
+
+| Factor | Fireworks AI (AMD MI300X) | Local GPU |
+|--------|---------------------------|-----------|
+| Hardware | AMD MI300X (cloud) | Requires AMD ROCm |
+| Deployment | Serverless-ready | Docker + GPU runtime |
+| Cost | Pay-per-token | Free (if hardware available) |
+| Latency | Low (optimized inference) | Depends on hardware |
+| Availability | Always available | Limited by local resources |
+
+---
+
+## 8. Performance Characteristics
+
+| Operation | Latency | Notes |
+|-----------|---------|-------|
+| Audio extraction | ~1s | Local CPU (FFmpeg) |
+| Frame extraction | ~2s | Local CPU (imageio) |
+| Whisper transcription | ~1-3s | Fireworks AI |
+| Vision analysis | ~5-15s | Fireworks AI (Kimi) |
+| Style generation | ~2-5s per style | Fireworks AI (DeepSeek) |
+| **Total pipeline** | ~30-45s | End-to-end |
+
+---
+
+## 9. Error Handling
+
+### 9.1 Model Fallback
+
+```python
+for model in models_to_try:
+    try:
+        response = client.chat.completions.create(model=model, ...)
+        return response
+    except Exception as e:
+        if "429" in str(e):  # Rate limit
+            continue  # Try next model
+        raise  # Non-transient error
+```
+
+### 9.2 Graceful Degradation
+
+- **No audio:** Skip transcription, proceed with vision
+- **Rate limit:** Fall back to next model
+- **API timeout:** Return error with actionable message
+
+---
+
+## 10. Final Sign-off
+
+**Status:** ✅ IMPLEMENTATION ALIGNED
+
+This document accurately reflects the current Fireworks AI integration with Whisper-v3, Kimi-k2p6, and DeepSeek-v4-pro.
+
+---
+
+## Next Iteration (Future)
+
+- Fine-tune style prompts based on evaluation feedback
+- Add model versioning support
+- Implement caching for repeated requests
+- Add A/B testing for prompt variations
+

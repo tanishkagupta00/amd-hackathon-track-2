@@ -1,139 +1,488 @@
+
 # Deployment Architecture
 
 **Project:** CaptionForge AI  
 **Document:** 19_Deployment_Architecture.md  
-**Version:** 1.0 (Production Blueprint)
+**Version:** 2.0 (Implementation Aligned)
 
 ---
 
 ## 1. Executive Summary
-This document defines the containerization, orchestration, and continuous integration/continuous deployment (CI/CD) packaging configurations for **CaptionForge AI**, engineered specifically for Track 2 (Video Captioning Agent) of the AMD Developer Hackathon. The execution layout provides a stateless, self-contained `linux/amd64` Docker engine stack optimized to consume input tasks from a standardized JSON file path and output structural responses before exiting within the maximum execution limit.
+
+CaptionForge AI supports two deployment modes:
+1. **Serverless (Vercel)** - Primary mode for hackathon evaluation
+2. **Docker Container** - Alternative mode for local/GPU execution
+
+Both modes use **Fireworks AI on AMD MI300X GPUs** for inference, enabling deployment without local GPU hardware.
 
 ---
 
-## 2. Container Architecture & Base Configurations
+## 2. Deployment Modes
 
-### 2.1. System Requirements & Platform Gatekeeping
-To maintain strict compatibility with the evaluation harness framework, the runtime image is compiled specifically for the `linux/amd64` instruction set architecture. 
+### 2.1 Serverless (Vercel) - Primary
 
-```text
-docker/
-├── Dockerfile                  # Multi-stage layer compilation manifest
-├── entrypoint.sh               # Initialization script and environment verification gates
-└── config/
-    └── hardware_runtime.json   # Local optimization matrix profiles
+```
+┌─────────────────┐
+│   Vercel Edge   │
+│                 │
+│  ┌───────────┐  │
+│  │ Frontend  │  │  React + Vite build
+│  │ (Static)  │  │  Served from /dist
+│  └───────────┘  │
+│                 │
+│  ┌───────────┐  │
+│  │ Backend   │  │  FastAPI on Vercel Functions
+│  │ (Serverless)│ │  api/index.py → backend/main.py
+│  └─────┬─────┘  │
+└────────┼─────────┘
+         │
+         ▼
+┌─────────────────┐
+│  Fireworks AI   │
+│  (AMD MI300X)   │
+│                 │
+│  - Whisper-v3   │
+│  - Kimi-k2p6    │
+│  - DeepSeek-v4  │
+└─────────────────┘
 ```
 
-### 2.2. Multi-Stage Production Dockerfile Blueprint
-The container environment isolates Python runtime modules and structural system utilities (`ffmpeg`, `opencv`) into minimized build layers to remain well beneath the maximum 10GB evaluation boundary limits.
+**Advantages:**
+- Zero infrastructure management
+- Auto-scaling
+- Global CDN for frontend
+- Free tier available
+
+**Limitations:**
+- 10-second function timeout (can be increased)
+- Ephemeral storage
+- No persistent database
+
+### 2.2 Docker Container - Alternative
+
+```
+┌──────────────────────────────────┐
+│       Docker Container            │
+│                                   │
+│  ┌─────────────────────────────┐ │
+│  │ Python Application          │ │
+│  │ - FastAPI backend           │ │
+│  │ - SQLite database           │ │
+│  │ - File storage              │ │
+│  └─────────────────────────────┘ │
+│                                   │
+│  ┌─────────────────────────────┐ │
+│  │ Input/Output Mounts         │ │
+│  │ - /input/tasks.json         │ │
+│  │ - /output/results.json      │ │
+│  └─────────────────────────────┘ │
+└───────────────────────────────────┘
+```
+
+**Advantages:**
+- Full control over environment
+- Persistent storage
+- Can run on GPU hardware (optional)
+
+**Limitations:**
+- Requires container orchestration
+- Manual scaling
+
+---
+
+## 3. Serverless Deployment (Vercel)
+
+### 3.1 Project Structure
+
+```
+project-root/
+├── api/
+│   ├── index.py        # Vercel entry point
+│   └── requirements.txt
+├── backend/
+│   ├── main.py         # FastAPI app
+│   ├── database.py
+│   ├── pipeline/
+│   └── ...
+├── frontend/
+│   ├── dist/           # Build output
+│   └── ...
+└── vercel.json
+```
+
+### 3.2 Vercel Entry Point
+
+```python
+# api/index.py
+import sys
+import os
+
+# Load environment variables
+from dotenv import load_dotenv
+load_dotenv()
+
+# Add backend to path
+backend_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "backend")
+sys.path.insert(0, backend_path)
+
+# Import FastAPI app
+from main import app
+```
+
+### 3.3 Environment Variables
+
+Set in Vercel dashboard:
+
+| Variable | Value | Required |
+|----------|-------|----------|
+| `FIREWORKS_API_KEY` | Your Fireworks API key | ✅ Yes |
+| `TEMP` | Temp directory path | No (auto) |
+
+### 3.4 Vercel Configuration
+
+```json
+{
+  "builds": [
+    { "src": "api/index.py", "use": "@vercel/python" },
+    { "src": "frontend/dist", "use": "@vercel/static" }
+  ],
+  "routes": [
+    { "src": "/api/(.*)", "dest": "api/index.py" },
+    { "src": "/(.*)", "dest": "frontend/dist/$1" }
+  ]
+}
+```
+
+### 3.5 Deployment Commands
+
+```bash
+# Install Vercel CLI
+npm i -g vercel
+
+# Deploy
+vercel --prod
+```
+
+---
+
+## 4. Docker Deployment
+
+### 4.1 Dockerfile
 
 ```dockerfile
-# Stage 1: Dependency compilation environment
-FROM rocm/dev-ubuntu-22.04:6.0-complete AS builder
-
-RUN apt-get update && apt-get install -y --no-install-recommends     python3-pip python3-dev ffmpeg libsm6 libxext6 git &&     rm -rf /var/lib/apt/lists/*
+# Multi-stage build
+FROM python:3.11-slim AS builder
 
 WORKDIR /build
-COPY requirements.txt .
-RUN pip3 install --no-cache-dir --user -r requirements.txt
+COPY backend/requirements.txt .
+RUN pip install --no-cache-dir --user -r requirements.txt
 
-# Stage 2: Final deployment image
-FROM rocm/pytorch:rocm6.0_ubuntu22.04_py3.10_pytorch_2.1.1
+# Final stage
+FROM python:3.11-slim
 
-RUN apt-get update && apt-get install -y --no-install-recommends     ffmpeg libsm6 libxext6 &&     rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ffmpeg libsm6 libxext6 \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
+
+# Copy Python packages
 COPY --from=builder /root/.local /root/.local
-COPY . /app
-
 ENV PATH=/root/.local/bin:$PATH
-ENV PYTHONUNBUFFERED=1
 
+# Copy application
+COPY backend/ /app/
+
+# Create directories
+RUN mkdir -p /input /output /tmp/captionforge_storage
+
+# Environment
+ENV PYTHONUNBUFFERED=1
+ENV FIREWORKS_API_KEY=""
+
+# Entrypoint
+COPY entrypoint.sh /app/
 RUN chmod +x /app/entrypoint.sh
 ENTRYPOINT ["/app/entrypoint.sh"]
 ```
 
----
+### 4.2 Entrypoint Script
 
-## 3. Input/Output Lifecycle Hook Management
+```bash
+#!/bin/bash
 
-The application runtime environment executes strictly within a zero-interaction automation lifecycle driven entirely by standard filesystem hooks.
+# Verify input exists
+if [ ! -f /input/tasks.json ]; then
+    echo "ERROR: /input/tasks.json not found"
+    exit 1
+fi
 
-```mermaid
-flowchart TD
-    Start[Harness Injects Container Mounts] --> Init[Entrypoint Verifies Folders]
-    Init --> ReadJSON[Agent Parses /input/tasks.json]
-    ReadJSON --> Loop[Iterate Across Video URLs]
-    Loop --> Pipeline[Run Multimodal Inference Pipelines]
-    Pipeline --> Collect[Assemble Multiline Multi-Style Captions]
-    Collect --> WriteJSON[Write Output to /output/results.json]
-    WriteJSON --> Exit[Graceful Termination Exit Code 0]
+# Verify API key
+if [ -z "$FIREWORKS_API_KEY" ]; then
+    echo "ERROR: FIREWORKS_API_KEY not set"
+    exit 1
+fi
+
+# Run the pipeline
+python runner.py
+
+# Verify output
+if [ ! -f /output/results.json ]; then
+    echo "ERROR: Output not generated"
+    exit 1
+fi
+
+echo "Pipeline completed successfully"
+exit 0
 ```
 
-### 3.1. Standard Directory Mapping Matrices
-The runtime layout interacts exclusively with two explicitly separated persistent folder mount locations mapping task inputs and expected outputs:
-*   **Ingestion Boundary Point:** `/input/tasks.json` containing serialized evaluation target structures.
-*   **Export Boundary Point:** `/output/results.json` expecting structured multi-style caption payload blocks.
+### 4.3 Build & Run
+
+```bash
+# Build image
+docker build -t captionforge-ai .
+
+# Run container
+docker run \
+    -v /path/to/input:/input \
+    -v /path/to/output:/output \
+    -e FIREWORKS_API_KEY=your_key \
+    captionforge-ai
+```
 
 ---
 
-## 4. CI/CD Orchestration & Automated Validation Suite
+## 5. Input/Output Specifications
 
-### 4.1. GitHub Actions Build Workflow
-Automated builds compile, test, and push the platform target to public container registries (`GitHub Container Registry (GHCR)` or `Docker Hub`) utilizing explicit platform switches.
+### 5.1 Input Format (`/input/tasks.json`)
+
+```json
+[
+    {
+        "task_id": "v_test_01",
+        "video_path": "https://example.com/video1.mp4"
+    },
+    {
+        "task_id": "v_test_02",
+        "video_path": "/videos/sample.mp4"
+    }
+]
+```
+
+### 5.2 Output Format (`/output/results.json`)
+
+```json
+{
+    "tasks": [
+        {
+            "task_id": "v_test_01",
+            "captions": {
+                "formal": "The subject demonstrates...",
+                "sarcastic": "Behold, in a moment...",
+                "humorous-tech": "The user initiated...",
+                "humorous-non-tech": "Ah yes, the timeless..."
+            }
+        }
+    ]
+}
+```
+
+---
+
+## 6. CI/CD Pipeline
+
+### 6.1 GitHub Actions
 
 ```yaml
-name: Production Agent Deployment Workflow
+name: Deploy to Vercel
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
-  build-and-ship:
+  deploy:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout Source Assets
-      uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install Frontend Dependencies
+        working-directory: frontend
+        run: npm ci
+      
+      - name: Build Frontend
+        working-directory: frontend
+        run: npm run build
+      
+      - name: Deploy to Vercel
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-args: '--prod'
+```
 
-    - name: Set up QEMU Emulation Core
-      uses: docker/setup-qemu-action@v3
+### 6.2 Docker Build
 
-    - name: Initialize Docker Buildx Instance
-      uses: docker/setup-buildx-action@v3
+```yaml
+name: Build Docker Image
 
-    - name: Authenticate with Container Registry
-      uses: docker/login-action@v3
-      with:
-        registry: ghcr.io
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+on:
+  push:
+    branches: [main]
 
-    - name: Compile and Push Container Target
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        file: ./Dockerfile
-        platforms: linux/amd64
-        push: true
-        tags: ghcr.io/${{ github.repository }}/captionforge-agent:latest
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Build and Push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          tags: ghcr.io/${{ github.repository }}/captionforge:latest
 ```
 
 ---
 
-## 5. System Execution Verification & Health Strategies
+## 7. Monitoring & Health Checks
 
-To prevent container boot failures during automated evaluation runs, the initialization layers execute strict checks:
+### 7.1 Health Endpoint
 
-1.  **Boot Timeout Readiness:** The internal pipeline verifies that dependencies load within the first 60 seconds, ensuring it is ready for incoming tasks.
-2.  **Mount Verification Audit:** Validates the presence of `/input/tasks.json` on startup. If missing, it exits with a non-zero code immediately, preventing hanging infinite processing loops.
-3.  **JSON Structural Formatting Gate:** Before final execution exit, an internal pipeline validates the structural schema integrity of `/output/results.json` using Pydantic syntax parsers, preventing malformed text flags from invalidating scores.
+```python
+@router.get("/health")
+def health_check():
+    return {"status": "healthy", "version": settings.VERSION}
+```
+
+### 7.2 Container Health Check
+
+```dockerfile
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
+    CMD curl -f http://localhost:8000/api/v1/health || exit 1
+```
+
+### 7.3 Logging
+
+All logs are written to stdout/stderr:
+
+```python
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+)
+```
 
 ---
 
-## 6. Final Sign-off
+## 8. Security Considerations
 
-*   **Status:** APPROVED
-*   **Implementation Target:** Production Image Deployment Manifest Stack
+### 8.1 API Key Protection
+
+```python
+# Never log API keys
+logger.info(f"Using API key: {API_KEY[:8]}...")
+
+# Use environment variables
+FIREWORKS_API_KEY = os.environ.get("FIREWORKS_API_KEY")
+if not FIREWORKS_API_KEY:
+    raise Exception("FIREWORKS_API_KEY not set")
+```
+
+### 8.2 Input Validation
+
+```python
+# Validate video file size
+MAX_VIDEO_SIZE = 500 * 1024 * 1024  # 500MB
+
+if file_size > MAX_VIDEO_SIZE:
+    raise HTTPException(400, "Video file too large")
+```
+
+### 8.3 CORS Configuration
+
+```python
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Restrict in production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+```
+
+---
+
+## 9. Scalability
+
+### 9.1 Serverless Scaling
+
+Vercel automatically scales based on demand:
+- Auto-scaling to handle traffic spikes
+- Global CDN for frontend assets
+- Regional compute for API functions
+
+### 9.2 Container Scaling
+
+For Docker deployment:
+- Use Kubernetes for orchestration
+- Horizontal Pod Autoscaler for scaling
+- Load balancer for distribution
+
+---
+
+## 10. Cost Estimation
+
+### 10.1 Vercel Costs
+
+| Tier | Cost | Limits |
+|------|------|--------|
+| Free | $0 | 100GB bandwidth, 100 functions |
+| Pro | $20/mo | 1TB bandwidth, unlimited functions |
+
+### 10.2 Fireworks AI Costs
+
+| Model | Cost per 1M tokens |
+|-------|-------------------|
+| Whisper-v3 | $0.006/min audio |
+| Kimi-k2p6 | $0.20 input, $0.60 output |
+| DeepSeek-v4-pro | $0.75 input, $2.10 output |
+
+**Estimated cost per video:** ~$0.05-0.15
+
+---
+
+## 11. Final Sign-off
+
+**Status:** ✅ IMPLEMENTATION ALIGNED
+
+This document reflects the current dual-mode deployment architecture (Vercel serverless + Docker container).
+
+---
+
+## Next Iteration (Production)
+
+- Add rate limiting
+- Implement authentication
+- Set up monitoring (DataDog/New Relic)
+- Add automated backups
+- Configure custom domain
+- Set up staging environment
+
