@@ -12,29 +12,25 @@ logger = logging.getLogger("captionforge.runner")
 
 def get_io_paths():
     """
-    Returns the resolved input and output file paths based on environment.
-    """
-    # 1. Check Docker paths
-    input_path = "/input/tasks.json"
-    output_path = "/output/results.json"
-    
-    # 2. Check local relative paths
-    if not os.path.exists(input_path):
-        input_path = "input/tasks.json"
-        output_path = "output/results.json"
-        
-    # 3. Check Windows root paths
-    if not os.path.exists(input_path):
-        input_path = "C:\\input\\tasks.json"
-        output_path = "C:\\output\\results.json"
-        
-    # 4. Fallback: Workspace folder
-    if not os.path.exists(input_path):
-        workspace_dir = os.getcwd()
-        input_path = os.path.join(workspace_dir, "tasks.json")
-        output_path = os.path.join(workspace_dir, "results.json")
+    Returns the resolved input and output file paths.
 
-    return input_path, output_path
+    Priority order:
+      1. Docker standard mounts  — /input/tasks.json  /output/results.json
+      2. Relative paths          — input/tasks.json   output/results.json  (local dev)
+      3. Cwd fallback            — tasks.json         results.json
+    """
+    candidates = [
+        ("/input/tasks.json",                              "/output/results.json"),
+        ("input/tasks.json",                               "output/results.json"),
+        (os.path.join(os.getcwd(), "tasks.json"),          os.path.join(os.getcwd(), "results.json")),
+    ]
+
+    for input_path, output_path in candidates:
+        if os.path.exists(input_path):
+            return input_path, output_path
+
+    # Nothing found — return the Docker paths so the error message is clear
+    return "/input/tasks.json", "/output/results.json"
 
 def main():
     logger.info("Initializing CaptionForge AI Headless Runner...")
