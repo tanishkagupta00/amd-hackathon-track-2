@@ -1,36 +1,22 @@
 {
   "version": 2,
-  "buildCommand": "cd frontend && npm install && npm run build",
-  "outputDirectory": "frontend/dist",
   "builds": [
     {
-      "src": "api/index.py",
-      "use": "@vercel/python",
+      "src": "frontend/package.json",
+      "use": "@vercel/static-build",
       "config": {
-        
+        "distDir": "dist"
       }
+    },
+    {
+      "src": "api/index.py",
+      "use": "@vercel/python"
     }
   ],
   "routes": [
-    { "src": "/api/(.*)", "dest": "api/index.py" },
-    { "src": "/favicon\\.svg", "dest": "/favicon.svg" },
+    { "src": "/api/(.*)", "dest": "/api/index.py" },
     { "src": "/assets/(.*)", "dest": "/assets/$1" },
+    { "src": "/(.*\\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|map))", "dest": "/$1" },
     { "src": "/(.*)", "dest": "/index.html" }
-  ],
-  "headers": [
-    {
-      "source": "/index.html",
-      "headers": [
-        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" },
-        { "key": "Pragma", "value": "no-cache" },
-        { "key": "Expires", "value": "0" }
-      ]
-    },
-    {
-      "source": "/assets/(.*)",
-      "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
-      ]
-    }
   ]
 }
