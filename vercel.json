@@ -1,9 +1,21 @@
 {
+  "version": 2,
   "buildCommand": "cd frontend && npm install && npm run build",
   "outputDirectory": "frontend/dist",
-  "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/index.py" },
-    { "source": "/(.*)", "destination": "/index.html" }
+  "builds": [
+    {
+      "src": "api/index.py",
+      "use": "@vercel/python",
+      "config": {
+        "maxDuration": 300
+      }
+    }
+  ],
+  "routes": [
+    { "src": "/api/(.*)", "dest": "api/index.py" },
+    { "src": "/favicon\\.svg", "dest": "/favicon.svg" },
+    { "src": "/assets/(.*)", "dest": "/assets/$1" },
+    { "src": "/(.*)", "dest": "/index.html" }
   ],
   "headers": [
     {
@@ -22,5 +34,3 @@
     }
   ]
 }
-
-
