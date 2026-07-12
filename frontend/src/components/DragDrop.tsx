@@ -114,9 +114,10 @@ function FilePreviewCard({ file, uploading }: { file: File; uploading: boolean }
             <VideoStripIllustration active={false} />
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-white truncate max-w-[260px]">{file.name}</p>
+            <p className="text-sm font-semibold text-white truncate max-w-[160px] sm:max-w-[320px]">{file.name}</p>
             <p className="text-xs text-zinc-400 mt-0.5">{sizeMB} MB</p>
           </div>
+
         </div>
         {uploading && (
           <div className="shrink-0 h-5 w-5 rounded-full border-2 border-ai-gold border-t-transparent animate-spin" />
@@ -253,13 +254,14 @@ export default function DragDrop({ onUploadSuccess }: DragDropProps) {
       ) : (
         <div
           className={[
-            'relative rounded-2xl p-14 text-center cursor-pointer select-none',
+            'relative rounded-2xl p-6 sm:p-14 text-center cursor-pointer select-none',
             'transition-all duration-300 backdrop-blur-[15px]',
             dragActive
               ? 'border-ai-gold bg-gradient-to-b from-white/5 to-white/5 shadow-[0_0_50px_rgba(212,175,55,0.15)]' // gold glow on drag
               : 'border-ai-gold/15 bg-gradient-to-b from-white/2 to-white/1',
             morphing ? 'morph-out' : 'morph-in',
           ].join(' ')}
+
           style={{ border: dragActive ? '1px solid #D4AF37' : '1px solid rgba(212,175,55,0.15)' }}
           onDragEnter={handleDrag} onDragOver={handleDrag}
           onDragLeave={handleDrag} onDrop={handleDrop}

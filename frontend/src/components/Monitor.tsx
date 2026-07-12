@@ -159,7 +159,7 @@ export default function Monitor({ videoId, videoUrl, onProcessingComplete }: Mon
         {/* Horizontal step tracker */}
         <div className="relative">
           {/* Background rail — zinc-800 */}
-          <div className="absolute top-[18px] left-[28px] right-[28px] h-px bg-zinc-800" />
+          <div className="absolute top-[18px] left-[28px] right-[28px] h-px bg-zinc-800 hidden sm:block" />
 
           <div className="relative grid grid-cols-4 gap-2">
             {STAGES.map((stage, idx) => {
@@ -173,7 +173,7 @@ export default function Monitor({ videoId, videoUrl, onProcessingComplete }: Mon
                   {/* Connector fill — gradient fill! */}
                   {idx > 0 && stageIsCompleted && (
                     <div
-                      className="absolute h-px bg-gradient-to-r from-ai-goldDark to-ai-goldLight connector-fill"
+                      className="absolute h-px bg-gradient-to-r from-ai-goldDark to-ai-goldLight connector-fill hidden sm:block"
                       style={{
                         top: '18px',
                         left:  `calc(${(idx - 1) * 25 + 12.5}% + 24px)`,
@@ -217,10 +217,10 @@ export default function Monitor({ videoId, videoUrl, onProcessingComplete }: Mon
       </div>
 
       {/* ── Visual Processing Display & Terminal Log ── */}
-      <div className="bg-[#050505] rounded-2xl border border-zinc-800 flex h-[350px] overflow-hidden shadow-2xl shadow-black/50">
+      <div className="bg-[#050505] rounded-2xl border border-zinc-800 flex flex-col md:flex-row min-h-[500px] md:h-[380px] overflow-hidden shadow-2xl shadow-black/50">
         
         {/* Left Side: Dynamic Visualization */}
-        <div className="w-[40%] min-w-[280px] border-r border-zinc-800/80 bg-gradient-to-b from-zinc-900/40 to-transparent flex flex-col items-center justify-center p-6 relative">
+        <div className="w-full md:w-[35%] md:min-w-[260px] border-b md:border-b-0 md:border-r border-zinc-800/80 bg-gradient-to-b from-zinc-900/40 to-transparent flex flex-col items-center justify-center p-6 relative py-8 md:py-6">
           
           <div className="absolute top-5 left-5 flex items-center gap-2.5">
             <span className={`h-2.5 w-2.5 rounded-full ${isRunning ? 'bg-ai-gold animate-pulse' : isCompleted ? 'bg-ai-emerald' : 'bg-rose-500'}`} />
@@ -229,7 +229,7 @@ export default function Monitor({ videoId, videoUrl, onProcessingComplete }: Mon
             </span>
           </div>
           
-          <div className="h-44 w-44 relative mt-4">
+          <div className="h-36 w-36 md:h-40 md:w-40 relative mt-4">
             <ParticleOrb 
               hue={isRunning ? 45 : isCompleted ? 140 : 0} 
               hoverIntensity={0.5} 
@@ -244,14 +244,15 @@ export default function Monitor({ videoId, videoUrl, onProcessingComplete }: Mon
             )}
           </div>
           
-          <p className="mt-8 text-center text-xs font-medium text-zinc-400 max-w-[200px] leading-relaxed">
+          <p className="mt-6 text-center text-xs font-medium text-zinc-400 max-w-[200px] leading-relaxed">
             {STATUS_LABEL[status] ?? 'Processing request...'}
           </p>
         </div>
 
         {/* Right Side: Execution Stream */}
-        <div className="flex-1 flex flex-col h-full bg-[#0a0a0c]">
+        <div className="flex-1 flex flex-col min-h-[280px] md:h-full bg-[#0a0a0c]">
           <div className="flex items-center gap-2 px-5 py-3 border-b border-zinc-800/80 bg-zinc-900/50 shrink-0">
+
             <div className="flex gap-1.5">
               <span className="h-2.5 w-2.5 rounded-full bg-rose-500/30" />
               <span className="h-2.5 w-2.5 rounded-full bg-yellow-500/30" />

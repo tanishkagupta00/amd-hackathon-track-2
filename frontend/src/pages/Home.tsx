@@ -94,7 +94,7 @@ export default function Home() {
             </div>
 
             {/* H1 */}
-            <h1 className="text-5xl md:text-7xl font-bold tracking-tight leading-[1.08] font-display">
+            <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold tracking-tight leading-[1.08] font-display">
               <Shuffle 
                 tag="span"
                 text="Intelligent Video Captions," 
@@ -114,7 +114,7 @@ export default function Home() {
               />
             </h1>
 
-            <p className="text-base md:text-lg text-zinc-400 max-w-2xl mx-auto leading-relaxed">
+            <p className="text-base md:text-lg text-zinc-400 max-w-2xl mx-auto leading-relaxed px-2 sm:px-0">
               Upload any video. Our multi-stage Extract → Reason → Style AI pipeline
               analyses visual content and renders captions in four bespoke tones — instantly.
             </p>
@@ -137,20 +137,21 @@ export default function Home() {
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-3 gap-8 pt-12 max-w-2xl mx-auto">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8 pt-12 max-w-2xl mx-auto px-4 sm:px-0">
               {[
                 { label: '4 Styles', value: 'Formal, Sarcastic, Humorous' },
                 { label: 'Multi-Stage', value: 'AI Pipeline' },
                 { label: 'High Accuracy', value: 'Zero Hallucination' }
               ].map((stat, i) => (
                 <FadeIn key={i} delay={0.1 * (i + 1)} className="text-center">
-                  <div className="text-2xl font-bold hero-title mb-1">
+                  <div className="text-xl sm:text-2xl font-bold hero-title mb-1">
                     {stat.label}
                   </div>
                   <div className="text-xs text-zinc-500">{stat.value}</div>
                 </FadeIn>
               ))}
             </div>
+
           </FadeIn>
         </section>
 
