@@ -1,5 +1,4 @@
 import os
-import time
 import logging
 from typing import Dict, Any, List
 from .caption_generator import CaptionGenerator
@@ -24,8 +23,8 @@ class CaptionForgePipeline:
             if progress_callback:
                 progress_callback(stage, msg)
 
-        update_progress("uploading", "Uploading video to Gemini for multimodal analysis...")
-        update_progress("analyzing", "Watching the entire video to extract subjects, actions, and audio...")
+        update_progress("uploading", "Delegating video to AMD Cloud GPU Worker for extraction...")
+        update_progress("analyzing", "Extracting audio and frames, then transcribing & analyzing via Fireworks AI...")
         
         base_caption = self.caption_generator.generate_base_caption(video_path)
         update_progress("analyzing", f"Base caption generated: '{base_caption}'")
@@ -34,23 +33,10 @@ class CaptionForgePipeline:
         styles = styles or ["formal", "sarcastic", "humorous-tech", "humorous-non-tech"]
         captions = {}
         evaluations = {}
-        last_used_gemini = False  # track whether previous call hit Gemini rate limits
 
         for i, style in enumerate(styles):
-            # Only delay if the PREVIOUS style call fell back to Gemini (free tier = 15 RPM
-            # for gemini-2.0-flash). If Fireworks handled it, no delay needed at all.
-            if i > 0 and last_used_gemini:
-                logger.info(f"[pipeline] Previous call used Gemini — waiting 5s before '{style}' to respect rate limit.")
-                time.sleep(5)
-
             try:
                 styled_text = self.style_transformer.transform(base_caption, style)
-
-                # Check which provider was actually used
-                last_used_gemini = getattr(
-                    self.style_transformer.llm_service, "last_provider", None
-                ) == "gemini"
-
                 eval_result = self.critic.evaluate_caption(styled_text, style, [])
 
                 captions[style] = eval_result["caption"]
@@ -64,7 +50,6 @@ class CaptionForgePipeline:
                 update_progress("generating", f"Compiled '{style}' style caption with accuracy: {eval_result['accuracy_score']}.")
             except Exception as e:
                 logger.warning(f"[pipeline] style '{style}' failed: {e}")
-                last_used_gemini = False
                 captions[style] = f"[{style.upper()}] Style generation failed: {str(e)}"
                 evaluations[style] = {
                     "accuracy_score": 0.0,
