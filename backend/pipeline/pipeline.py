@@ -23,8 +23,8 @@ class CaptionForgePipeline:
             if progress_callback:
                 progress_callback(stage, msg)
 
-        update_progress("uploading", "Delegating video to AMD Cloud GPU Worker for extraction...")
-        update_progress("analyzing", "Extracting audio and frames, then transcribing & analyzing via Fireworks AI...")
+        update_progress("uploading", "Extracting audio and video keyframes locally...")
+        update_progress("analyzing", "Transcribing speech and analyzing visual frames via Fireworks AI (on AMD MI300X)...")
         
         base_caption = self.caption_generator.generate_base_caption(video_path)
         update_progress("analyzing", f"Base caption generated: '{base_caption}'")

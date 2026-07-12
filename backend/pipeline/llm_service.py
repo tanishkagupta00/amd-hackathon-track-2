@@ -46,7 +46,7 @@ class LLMService:
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": user_prompt}
                     ],
-                    max_tokens=800,
+                    max_tokens=1500,
                     temperature=0.75
                 )
                 text = response.choices[0].message.content.strip()

@@ -21,16 +21,29 @@ class StyleTransformer:
     def _strip_reasoning(self, text: str) -> str:
         """
         Some models (DeepSeek, GLM) prepend chain-of-thought reasoning even when
-        told not to. Strip any lines that look like internal monologue.
+        told not to. Strip any paragraphs/lines that look like internal monologue.
         """
+        text_clean = text.strip()
+        
+        # If there are multiple paragraphs, the final paragraph is typically the actual caption
+        paragraphs = [p.strip() for p in text_clean.split("\n\n") if p.strip()]
+        if len(paragraphs) > 1:
+            last_p = paragraphs[-1]
+            planning_indicators = ["we are asked", "let me analyze", "the user wants", "requirements:", "refining:", "i need to", "first frame:"]
+            is_planning = any(ind in last_p.lower() for ind in planning_indicators)
+            if not is_planning and len(last_p) > 20:
+                if (last_p.startswith('"') and last_p.endswith('"')) or (last_p.startswith("'") and last_p.endswith("'")):
+                    last_p = last_p[1:-1].strip()
+                return last_p
+
+        # Fallback to line-by-line filtering
         import re
-        # Remove lines starting with reasoning patterns
         reasoning_patterns = [
             r"^(i need to|let me|i will|i should|the user wants|the task is|"
             r"analyze|here('s| is) (the|my)|okay,|alright,|sure,|certainly,|"
-            r"of course,|first,|step \d)[,:\s].*",
+            r"of course,|first,|step \d|we are asked|the source description|possible metaphors|one approach)[,:\s].*",
         ]
-        lines = text.split("\n")
+        lines = text_clean.split("\n")
         clean_lines = []
         for line in lines:
             stripped = line.strip()
@@ -44,7 +57,8 @@ class StyleTransformer:
                 clean_lines.append(line)
 
         result = "\n".join(clean_lines).strip()
-        # If stripping removed everything, return original
+        if (result.startswith('"') and result.endswith('"')) or (result.startswith("'") and result.endswith("'")):
+            result = result[1:-1].strip()
         return result if result else text
 
     def _build_prompts(self, base_caption: str, style: str) -> tuple[str, str]:
