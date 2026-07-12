@@ -262,7 +262,7 @@ class CaptionGenerator:
                 response = client.chat.completions.create(
                     model="accounts/fireworks/models/kimi-k2p6",
                     messages=messages,
-                    max_tokens=1500,
+                    max_tokens=10000,
                     temperature=0.2
                 )
                 raw_caption = response.choices[0].message.content.strip()

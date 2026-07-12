@@ -10,18 +10,18 @@ interface MonitorProps {
 }
 
 const STAGES = [
-  { id: 'uploading',  name: 'Upload',  desc: 'Transferring to Gemini AI' },
-  { id: 'analyzing',  name: 'Analyze', desc: 'Watching entire video' },
-  { id: 'generating', name: 'Style',   desc: 'Multi-head style transformers' },
+  { id: 'uploading',  name: 'Extract',  desc: 'Audio & keyframes' },
+  { id: 'analyzing',  name: 'Transcribe', desc: 'Whisper Speech-to-Text' },
+  { id: 'generating', name: 'Analyze',   desc: 'Fireworks AI Multimodal' },
   { id: 'completed',  name: 'Done',    desc: 'Pipeline successful' },
 ];
 
 const STATUS_LABEL: Record<string, string> = {
-  queued:       'Queued — waiting for worker slot',
-  uploading:    'Uploading — transferring video context to Gemini AI',
-  analyzing:    'Analyzing — watching entire video and extracting facts',
-  generating:   'Styling — running parallel style transformers (DeepSeek / Gemini)',
-  completed:    'Complete — all captions generated successfully',
+  queued:       'Queued — waiting for execution slot',
+  uploading:    'Extracting — parsing audio track and keyframes locally',
+  analyzing:    'Transcribing — running whisper-v3 on AMD Instinct MI300X',
+  generating:   'Analyzing — reasoning with kimi-k2p6 vision model on AMD Instinct',
+  completed:    'Complete — all styled captions generated successfully',
   failed:       'Failed — check execution log for details',
 };
 
@@ -100,20 +100,20 @@ export default function Monitor({ videoId, videoUrl, onProcessingComplete }: Mon
     const mockInterval = setInterval(() => {
       setStatus(prev => {
         if (prev === 'queued') {
-          setLogs(l => [...l, '[INFO] Uploading video context to Gemini...']);
+          setLogs(l => [...l, '[INFO] Extracting audio stream and video keyframes locally...']);
           return 'uploading';
         }
         if (prev === 'uploading') {
-          setLogs(l => [...l, '[INFO] Analyzing multimodal frames and audio...']);
+          setLogs(l => [...l, '[INFO] Transcribing speech using Fireworks Whisper-v3 (on AMD MI300X)...']);
           return 'analyzing';
         }
         if (prev === 'analyzing') {
-          setLogs(l => [...l, '[INFO] Extracting factual scene graph...', '[INFO] Generating multi-head stylized text...']);
+          setLogs(l => [...l, '[INFO] Running Kimi K2.6 vision model on AMD Instinct MI300X GPUs...', '[INFO] Generating multi-head stylized captions (deepseek-v4-pro)...']);
           return 'generating';
         }
         return prev;
       });
-    }, 2000);
+    }, 2500);
 
     return () => clearInterval(mockInterval);
   }, [videoId]);
