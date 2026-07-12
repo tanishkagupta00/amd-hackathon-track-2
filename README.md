@@ -14,7 +14,7 @@ We tackle the challenge of intelligent video understanding by utilizing a highly
 ## ✨ Key Features for Judges
 
 * **AMD Hardware Acceleration**: Core visual context extraction and video frame sampling run entirely locally, fully utilizing AMD GPU architecture via PyTorch and OpenCLIP (`ViT-B-32`).
-* **Resilient AI Fallback Architecture**: A custom `LLMService` handles styling and reasoning, intelligently failing over from Fireworks AI to Google Gemini to ensure 100% uptime even if primary API credits deplete.
+* **Resilient AI Fallback Architecture**: A custom `LLMService` handles styling and reasoning, automatically failing over across multiple Fireworks AI models (DeepSeek-V4-Pro → Kimi-K2 → GPT-OSS-120B) to ensure 100% uptime even if a primary model is rate-limited or unavailable.
 * **Premium User Experience**: A breathtaking, responsive React frontend featuring GSAP-powered scroll animations, smooth morphing transitions, and an elegant Obsidian/AI-Gold dark theme.
 * **Dual Execution Modes**: 
   - **Headless CLI Runner**: Automated, non-interactive execution reading from `tasks.json` to write compliance-checked outputs for batch judge evaluation.
@@ -33,8 +33,8 @@ We tackle the challenge of intelligent video understanding by utilizing a highly
 **Backend & Pipeline**
 * **Framework:** FastAPI (Python 3.10+), SQLAlchemy (SQLite)
 * **Vision Processing (AMD Local):** `torch`, `open_clip_torch`, `opencv-python`, `Pillow`
-* **LLM Integration:** `openai` (Fireworks AI compatible), `google-genai`
-* **Resilience:** Custom Exception Handling & Automated Fallback Routing
+* **LLM Integration:** `openai` (Fireworks AI compatible)
+* **Resilience:** Custom Exception Handling & Automated Fireworks Model Fallback Routing
 
 ---
 
